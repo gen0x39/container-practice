@@ -25,3 +25,5 @@ spec:
           value: "main"
         - name: VARIABLE_NAME
           value: "app"
+        - name: PORT
+          value: "80"
