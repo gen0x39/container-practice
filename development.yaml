@@ -19,11 +19,11 @@ spec:
       - name: fastapi
         image: ghcr.io/gen0x39/container-practice:latest
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         env:
         - name: MODULE_NAME
           value: "main"
         - name: VARIABLE_NAME
           value: "app"
         - name: PORT
-          value: "80"
+          value: "8080"
