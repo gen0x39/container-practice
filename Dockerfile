@@ -10,6 +10,7 @@ RUN useradd -m -u 1000 appuser
 # アプリケーションコードのコピー
 COPY --chown=appuser:appuser main.py /app/main.py
 COPY --chown=appuser:appuser requirements.txt /app/requirements.txt
+COPY --chown=appuser:appuser data.json /app/data.json
 
 # パッケージのインストール
 RUN pip install --no-cache-dir --upgrade pip && \
