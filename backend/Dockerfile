@@ -20,3 +20,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
 USER appuser
 
 # CMDは削除（ベースイメージのデフォルト設定を使用）
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
