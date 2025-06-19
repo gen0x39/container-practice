@@ -42,3 +42,22 @@ jobs:
         tags: |
           ghcr.io/${{ github.repository }}/frontend:${{ steps.vars.outputs.sha_short }}
           ghcr.io/${{ github.repository }}/frontend:latest
+
+    # マニフェストファイルを更新するステップを追加
+    - name: Update manifests with Git SHA
+      run: |
+        echo "Updating manifests with Git SHA: ${{ steps.vars.outputs.sha_short }}"
+        
+        # バックエンドのイメージタグを更新
+        sed -i "s|image: ghcr.io/gen0x39/container-practice/backend:.*|image: ghcr.io/gen0x39/container-practice/backend:${{ steps.vars.outputs.sha_short }}|" manifest/backend-development.yaml
+        
+        # フロントエンドのイメージタグを更新
+        sed -i "s|image: ghcr.io/gen0x39/container-practice/frontend:.*|image: ghcr.io/gen0x39/container-practice/frontend:${{ steps.vars.outputs.sha_short }}|" manifest/frontend-development.yaml
+
+    - name: Commit and push manifest changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add manifest/
+        git commit -m "Auto-update images to ${{ steps.vars.outputs.sha_short }}"
+        git push
