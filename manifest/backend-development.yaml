@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: bqnq
+  labels:
+    app.kubernetes.io/name: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend
+    spec:
+      containers:
+      - name: backend
+        image: ghcr.io/gen0x39/container-practice/backend:latest
+        ports:
+        - containerPort: 9000
+        env:
+        - name: MODULE_NAME
+          value: "main"
+        - name: VARIABLE_NAME
+          value: "app"
+        - name: PORT
+          value: "9000"
+        - name: ENVIRONMENT
+          value: "development"
+          
