@@ -4,7 +4,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "8080:4200"
+      - "9700:4200"
 
   backend:
     build: 
