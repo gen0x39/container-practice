@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/gen0x39/container-practice/backend:latest
+        image: ghcr.io/gen0x39/container-practice/backend:cec0f2f
         ports:
         - containerPort: 9000
         env:
