@@ -11,3 +11,7 @@ spec:
     port: 80
     targetPort: 9000
   type: ClusterIP
+  sessionAffinity: None
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
