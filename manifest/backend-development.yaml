@@ -27,6 +27,6 @@ spec:
           value: "app"
         - name: PORT
           value: "9000"
-        - name: ENVIRONMENT
-          value: "development"
+         - name: ENVIRONMENT
+          value: "production"  # 本番環境
           
