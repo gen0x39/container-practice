@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/gen0x39/container-practice/frontend:cec0f2f
+        image: ghcr.io/gen0x39/container-practice/frontend:f1e90f8
         ports:
         - containerPort: 4200
