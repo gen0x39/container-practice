@@ -1,0 +1,39 @@
+CrashLoopBackOff
+コンテナが意図しない再起動を繰り返している
+アプリケーションのエラーの可能性がある
+
+
+kubectl logs container-practice-5746d647c7-6mdn5
+exec /start.sh: exec format error
+
+
+development.yamlを修正して、FROMの実行コマンドを切り替える
+well known portを使うためには権限が必要
+[2025-06-16 03:54:16 +0000] [1] [ERROR] connection to ('0.0.0.0', 80) failed: [Errno 13] Permission denied
+
+ctrl+w 
+
+
+kubectl get service -n bqnq container-practice -w
+
+
+
+
+pod名を知らなくても通信可能（discovery）
+L4LB: 負荷分散ができる、curlx10 -> pod1:3, 3, 4くらいに負荷分散してほしい。
+確認方法
+ヘルスチェックのエンドポイント：ホスト名を返す（Pod１、Pod２,Pod1）、、みたいになってほしい
+APIレスポンスにホスト名を含めたい。
+
+
+プロジェクトごとにNodeのバージョンを変える（Nixというものがあるらしい、asdfとか）
+
+
+アプリケーションを開発する上で、どの環境でも動くようにしたい
+今はLocalhostで動かしている
+今度はeksで動くようにしたち
+
+設定ファイル
+　本番環境用
+　開発環境用
+環境変数
