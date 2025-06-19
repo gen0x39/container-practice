@@ -2,6 +2,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+import { environment } from '../../environments/environment';  // 追加
 
 interface Rating {
   count: number;
@@ -167,7 +168,8 @@ export class ItemsComponent implements OnInit {
   constructor(private http: HttpClient) { }
 
   ngOnInit() {
-    this.http.get<Item[]>('http://localhost:8000/items')
+    const apiUrl = environment.apiUrl;
+    this.http.get<Item[]>(`${apiUrl}/items`)
       .subscribe(data => {
         this.items = data;
       });
