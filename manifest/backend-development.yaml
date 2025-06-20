@@ -25,6 +25,13 @@ spec:
         image: ghcr.io/gen0x39/container-practice/backend:27aa5b4
         ports:
         - containerPort: 9000
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         env:
         - name: MODULE_NAME
           value: "main"

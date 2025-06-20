@@ -3,6 +3,9 @@ import json
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import socket
+import time
+import threading
+
 
 app = FastAPI()
 app.add_middleware(
@@ -65,4 +68,22 @@ def get_frontend_info(request: Request, response: Response):
         "node_name": node_name,
         "client_ip": client_ip,
         "environment": env
+    }
+
+@app.get("/load-test")
+def load_test(seconds: int = 10, cpu_intensive: bool = True):
+    """負荷テスト用エンドポイント"""
+    start_time = time.time()
+    
+    if cpu_intensive:
+        # CPU負荷をかける処理
+        end_time = start_time + seconds
+        while time.time() < end_time:
+            # CPU負荷をかける計算
+            sum(range(10000))
+    
+    return {
+        "message": f"負荷テスト完了: {seconds}秒間実行",
+        "pod_name": socket.gethostname(),
+        "execution_time": time.time() - start_time
     }
