@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { LogService } from '../services/log.service';
+import { environment } from '../../environments/environment';
 
 interface HealthResponse {
   status: string;
@@ -305,8 +306,8 @@ export class HealthComponent implements OnInit {
     this.loading = true;
     this.error = '';
     this.requestTime = new Date().toISOString();
-    this.requestUrl = 'http://localhost:8000/health';
-    
+    this.requestUrl = `${environment.apiUrl}/health`;
+
     this.logService.info(
       'backend_health_request_start',
       'Backend health check request started',
