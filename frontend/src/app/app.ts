@@ -8,14 +8,12 @@ import { PodInfoComponent } from './pod-info/pod-info.component';
   standalone: true,
   imports: [RouterOutlet, RouterLink, PodInfoComponent],
   template: `
-    <h1>Hello World</h1>
     <h1>トップページ</h1>
     <app-pod-info></app-pod-info>
 
     <div class="navigation">
       <a routerLink="/items" class="nav-link">Itemsページへ</a>
     </div>
-
     <router-outlet></router-outlet>
   `
 })

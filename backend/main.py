@@ -5,6 +5,8 @@ import os
 import socket
 import time
 import threading
+import glob
+from pathlib import Path
 
 
 app = FastAPI()
@@ -35,6 +37,89 @@ async def get_item(item_id: int):
             return item
     raise HTTPException(status_code=404, detail=f"Item with id {item_id} not found")
 
+@app.get("/ascii")
+async def get_ascii_art_list():
+    """ASCIIアートファイルの一覧を取得"""
+    ascii_dir = Path("ascii")
+    if not ascii_dir.exists():
+        return []
+    
+    # .txtファイルを検索
+    txt_files = list(ascii_dir.glob("*.txt"))
+    
+    ascii_files = []
+    for i, file_path in enumerate(txt_files, 1):
+        # ファイル名からタイトルを生成
+        title = file_path.stem.replace('_', ' ').title()
+        
+        ascii_files.append({
+            "id": i,
+            "title": title,
+            "filename": file_path.name,
+            "category": "アニメ",
+            "author": "ASCIIアーティスト"
+        })
+    
+    print(f"ASCIIアートファイル一覧取得: {len(ascii_files)}件")
+    return ascii_files
+
+@app.get("/ascii/{filename}")
+async def get_ascii_art_content(filename: str):
+    """特定のASCIIアートファイルの内容を取得"""
+    file_path = Path("ascii") / filename
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File {filename} not found")
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        print(f"ASCIIアートファイル読み込み成功: {filename}, サイズ: {len(content)}文字")
+        
+        return {
+            "filename": filename,
+            "content": content,
+            "size": len(content)
+        }
+    except Exception as e:
+        print(f"ASCIIアートファイル読み込みエラー: {filename}, エラー: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reading file {filename}")
+
+@app.get("/ascii-all")
+async def get_all_ascii_art():
+    """すべてのASCIIアートを一度に取得"""
+    ascii_dir = Path("ascii")
+    if not ascii_dir.exists():
+        return []
+    
+    txt_files = list(ascii_dir.glob("*.txt"))
+    ascii_arts = []
+    
+    for i, file_path in enumerate(txt_files, 1):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()  # ← ここでファイルの内容を読み込んでいます
+            
+            title = file_path.stem.replace('_', ' ').title()
+            
+            ascii_arts.append({
+                "id": i,
+                "title": title,
+                "content": content,  # ← ファイルの内容を返しています
+                "category": "アニメ",
+                "author": "ASCIIアーティスト",
+                "likes": 0
+            })
+            
+            print(f"ASCIIアート読み込み成功: {file_path.name}, サイズ: {len(content)}文字")
+            
+        except Exception as e:
+            print(f"ASCIIアート読み込みエラー: {file_path.name}, エラー: {str(e)}")
+    
+    return ascii_arts
+
+    
 @app.get("/frontend-info")
 def get_frontend_info(request: Request, response: Response):
     """フロントエンドのPod情報を返すエンドポイント"""

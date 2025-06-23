@@ -2,21 +2,15 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { environment } from '../../environments/environment';  // 追加
+import { environment } from '../../environments/environment';
 
-interface Rating {
-  count: number;
-  rate: number;
-}
-
-interface Item {
+interface AsciiArt {
   id: number;
   title: string;
-  price: number;
-  description: string;
+  content: string;
   category: string;
-  image: string;
-  rating: Rating;
+  author: string;
+  likes: number;
 }
 
 @Component({
@@ -25,28 +19,27 @@ interface Item {
   imports: [CommonModule],
   template: `
     <div class="container">
-      <h2>Itemsページ</h2>
-      <ul class="items-list">
-        <li *ngFor="let item of items" class="item-card">
-          <div class="item-header">
-            <h3 class="item-title">{{ item.title }}</h3>
-            <span class="item-category">{{ item.category }}</span>
+      <h2>🎨 ASCIIアートギャラリー</h2>
+      <ul class="ascii-list">
+        <li *ngFor="let art of asciiArts" class="ascii-card">
+          <div class="ascii-header">
+            <h3 class="ascii-title">{{ art.title }}</h3>
+            <span class="ascii-category">{{ art.category }}</span>
           </div>
           
-          <div class="item-details">
-            <div class="item-rating">
-              <span class="stars">
-                <span *ngFor="let star of [1,2,3,4,5]" 
-                      class="star" 
-                      [class.filled]="star <= item.rating.rate">
-                  ★
-                </span>
-              </span>
-              <span class="rating-text">{{ item.rating.rate }} ({{ item.rating.count }}件)</span>
+          <div class="ascii-content">
+            <pre class="ascii-art">{{ art.content }}</pre>
+          </div>
+          
+          <div class="ascii-footer">
+            <div class="ascii-author">
+              <span class="author">�� {{ art.author }}</span>
             </div>
             
-            <div class="item-price">
-              <span class="price">¥{{ item.price | number:'1.0-0' }}</span>
+            <div class="ascii-actions">
+              <button class="like-btn" (click)="likeArt(art)">
+                ❤️ {{ art.likes }}
+              </button>
             </div>
           </div>
         </li>
@@ -58,40 +51,41 @@ interface Item {
       max-width: 800px;
       margin: 0 auto;
       padding: 20px;
+      font-family: 'Courier New', monospace;
     }
     
-    .items-list {
+    .ascii-list {
       list-style: none;
       padding: 0;
       margin: 0;
     }
     
-    .item-card {
+    .ascii-card {
       background: white;
       border: 1px solid #e0e0e0;
       border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
-    .item-header {
+    .ascii-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 12px;
+      margin-bottom: 15px;
     }
     
-    .item-title {
+    .ascii-title {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       font-weight: 600;
       color: #333;
       flex: 1;
       margin-right: 12px;
     }
     
-    .item-category {
+    .ascii-category {
       background: #e3f2fd;
       color: #1976d2;
       padding: 4px 8px;
@@ -102,76 +96,130 @@ interface Item {
       white-space: nowrap;
     }
     
-    .item-details {
+    .ascii-content {
+      margin: 15px 0;
+      background: #f9f9f9;
+      border-radius: 4px;
+      padding: 15px;
+      overflow-x: auto;
+    }
+    
+    .ascii-art {
+      margin: 0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: pre;
+      color: #333;
+    }
+    
+    .ascii-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-top: 15px;
     }
     
-    .item-rating {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .stars {
-      display: flex;
-      gap: 2px;
-    }
-    
-    .star {
-      color: #ddd;
-      font-size: 1rem;
-    }
-    
-    .star.filled {
-      color: #ffc107;
-    }
-    
-    .rating-text {
+    .ascii-author {
       font-size: 0.9rem;
       color: #666;
     }
     
-    .item-price {
-      text-align: right;
+    .ascii-actions {
+      display: flex;
+      gap: 10px;
     }
     
-    .price {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #2e7d32;
+    .like-btn {
+      background: none;
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+    
+    .like-btn:hover {
+      background: #f0f0f0;
+      border-color: #999;
     }
     
     @media (max-width: 600px) {
-      .item-header {
+      .ascii-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
       }
       
-      .item-details {
+      .ascii-footer {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
       }
       
-      .item-price {
-        text-align: left;
+      .ascii-art {
+        font-size: 10px;
       }
     }
   `]
 })
-
 export class ItemsComponent implements OnInit {
-  items: Item[] = [];
+  asciiArts: AsciiArt[] = [];
+
   constructor(private http: HttpClient) { }
 
   ngOnInit() {
-    const apiUrl = environment.apiUrl;
-    this.http.get<Item[]>(`${apiUrl}/items`)
-      .subscribe(data => {
-        this.items = data;
+    // chiikawa_01.txtファイルを読み込む
+    this.loadAsciiArt();
+  }
+
+  private loadAsciiArt() {
+    // 新しいasciiディレクトリからファイルを読み込み
+    const apiUrl = environment.apiUrl
+    
+    // バックエンドの/ascii-allエンドポイントからすべてのASCIIアートを取得
+    this.http.get<AsciiArt[]>(`${apiUrl}/ascii-all`)
+      .subscribe({
+        next: (arts: AsciiArt[]) => {
+          console.log('ASCIIアート読み込み成功:', { 
+            count: arts.length,
+            arts: arts.map(art => ({ 
+              id: art.id, 
+              title: art.title,
+              contentLength: art.content.length 
+            })),
+            timestamp: new Date().toISOString()
+          });
+          
+          this.asciiArts = arts;
+        },
+        error: (error) => {
+          console.error('ASCIIアート読み込みエラー:', {
+            error: error,
+            apiUrl: `${apiUrl}/ascii-all`,
+            timestamp: new Date().toISOString()
+          });
+          
+          // エラー時のフォールバック
+          this.asciiArts = [{
+            id: 1,
+            title: 'ちいかわ（フォールバック）',
+            content: `
+  /\\_/\\
+ ( o.o )
+  > ^ <
+            `,
+            category: 'アニメ',
+            author: 'システム',
+            likes: 0
+          }];
+        }
       });
+  }
+
+  likeArt(art: AsciiArt) {
+    art.likes++;
+    console.log('いいね追加:', { artId: art.id, newLikes: art.likes });
   }
 }
