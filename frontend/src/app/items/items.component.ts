@@ -4,6 +4,8 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../environments/environment';
 import { LogService } from '../services/log.service';
+import { FormsModule } from '@angular/forms';
+
 
 interface AsciiArt {
   id: number;
@@ -18,34 +20,79 @@ interface AsciiArt {
 @Component({
   selector: 'app-items',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="container">
-      <h2>🎨 ASCIIアートギャラリー</h2>
-      <ul class="ascii-list">
-        <li *ngFor="let art of asciiArts" class="ascii-card">
-          <div class="ascii-header">
-            <h3 class="ascii-title">{{ art.title }}</h3>
-            <span class="ascii-category">{{ art.category }}</span>
+    <div class="twitter-container">
+      <!-- Twitterライクなヘッダー -->
+      <div class="header">
+        <h1>🐦 ASCII Twitter</h1>
+        <p>ASCIIアートでつぶやこう！</p>
+      </div>
+
+      <div class="main-content">
+        <!-- 投稿フォーム -->
+        <div class="post-form">
+          <div class="post-header">
+            <div class="user-avatar">👤</div>
+            <div class="post-input-container">
+              <textarea 
+                class="post-textarea" 
+                placeholder="ASCIIアートでつぶやいてみよう..."
+                [(ngModel)]="newPost"
+                maxlength="280"
+              ></textarea>
+              <div class="post-footer">
+                <span class="char-count" [class.char-limit]="newPost.length > 260">
+                  {{ newPost.length }}/280
+                </span>
+                <button 
+                  class="post-btn" 
+                  [disabled]="!newPost.trim() || newPost.length > 280"
+                  (click)="submitPost()"
+                >
+                  🐦 ツイート
+                </button>
+              </div>
+            </div>
           </div>
-          
-          <div class="ascii-content">
-            <pre class="ascii-art">{{ art.content }}</pre>
-          </div>
-          
-          <div class="ascii-footer">
-            <div class="ascii-author">
-              <span class="author">�� {{ art.author }}</span>
+        </div>
+
+        <!-- タイムライン -->
+        <div class="timeline">
+          <div *ngFor="let art of asciiArts" class="tweet">
+            <div class="tweet-header">
+              <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                  <span class="username">{{ art.author }}</span>
+                  <span class="timestamp">· {{ art.timestamp }}</span>
+                </div>
+              </div>
+              <span class="category">{{ art.category }}</span>
             </div>
             
-            <div class="ascii-actions">
-              <button class="like-btn" (click)="likeArt(art)">
-                ❤️ {{ art.likes }}
+            <div class="tweet-content">
+              <h3 class="tweet-title">{{ art.title }}</h3>
+              <pre class="ascii-art">{{ art.content }}</pre>
+            </div>
+            
+            <div class="tweet-actions">
+              <button class="action-btn like-btn" (click)="likeArt(art)">
+                <span class="action-icon" [class.liked]="art.likes > 0">❤️</span>
+                <span class="action-count">{{ art.likes }}</span>
+              </button>
+              <button class="action-btn retweet-btn">
+                <span class="action-icon">🔄</span>
+                <span class="action-count">0</span>
+              </button>
+              <button class="action-btn reply-btn">
+                <span class="action-icon">💬</span>
+                <span class="action-count">0</span>
               </button>
             </div>
           </div>
-        </li>
-      </ul>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -206,7 +253,6 @@ export class ItemsComponent implements OnInit {
 
   private loadAllAsciiArt() {
     const apiUrl = environment.apiUrl || 'http://localhost:8000';
-
     this.logService.info(
       'ascii_art_request_start',
       'Starting ASCII art request',
