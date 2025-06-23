@@ -11,10 +11,16 @@ import logging
 from datetime import datetime
 import uuid
 from typing import Any, Dict
+from pydantic import BaseModel
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class TweetRequest(BaseModel):
+    content: str
+    author: str = "ユーザー"
+    category: str = "ユーザー投稿"
 
 # OpenTelemetry用の構造化ログ関数
 def log_structured_event(event_type: str, message: str, level: str = "INFO", **kwargs):
@@ -393,3 +399,77 @@ def load_test(seconds: int = 10, cpu_intensive: bool = True):
         "pod_name": socket.gethostname(),
         "execution_time": time.time() - start_time
     }
+
+@app.post("/tweet")
+async def create_tweet(request: Request, tweet_data: TweetRequest):
+    """ツイートを投稿してテキストファイルに保存"""
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+    
+    log_structured_event(
+        "tweet_post_start",
+        "Tweet post request started",
+        level="INFO",
+        request_id=request_id,
+        method="POST",
+        path="/tweet",
+        author=tweet_data.author,
+        content_length=len(tweet_data.content)
+    )
+    
+    try:
+        # asciiディレクトリの作成（存在しない場合）
+        ascii_dir = Path("ascii")
+        ascii_dir.mkdir(exist_ok=True)
+        
+        # ツイートIDを生成
+        tweet_id = str(uuid.uuid4())
+        filename = f"tweet_{tweet_id}.txt"
+        file_path = ascii_dir / filename
+        
+        # ツイート内容をファイルに保存
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(tweet_data.content)
+        
+        # レスポンス用のツイートオブジェクトを作成
+        tweet_response = {
+            "id": tweet_id,
+            "title": "新規ツイート",
+            "content": tweet_data.content,
+            "category": tweet_data.category,
+            "author": tweet_data.author,
+            "likes": 0,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "filename": filename
+        }
+        
+        response_time = (time.time() - start_time) * 1000
+        
+        log_request_response(
+            request=request,
+            response_data=tweet_response,
+            status_code=201,
+            response_time_ms=response_time,
+            request_id=request_id,
+            tweet_id=tweet_id,
+            filename=filename,
+            file_size=len(tweet_data.content)
+        )
+        
+        return tweet_response
+        
+    except Exception as e:
+        error_response_time = (time.time() - start_time) * 1000
+        
+        log_structured_event(
+            "tweet_post_error",
+            f"Tweet post failed: {str(e)}",
+            level="ERROR",
+            request_id=request_id,
+            response_time_ms=round(error_response_time, 2),
+            error_type=type(e).__name__,
+            error_message=str(e),
+            status_code=500
+        )
+        
+        raise HTTPException(status_code=500, detail={"error": str(e)})

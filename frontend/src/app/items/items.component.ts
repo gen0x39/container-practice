@@ -6,7 +6,6 @@ import { environment } from '../../environments/environment';
 import { LogService } from '../services/log.service';
 import { FormsModule } from '@angular/forms';
 
-
 interface AsciiArt {
   id: number;
   title: string;
@@ -15,6 +14,12 @@ interface AsciiArt {
   author: string;
   likes: number;
   timestamp: string;
+}
+
+interface TweetRequest {
+  content: string;
+  author: string;
+  category: string;
 }
 
 @Component({
@@ -47,10 +52,10 @@ interface AsciiArt {
                 </span>
                 <button 
                   class="post-btn" 
-                  [disabled]="!newPost.trim() || newPost.length > 280"
+                  [disabled]="!newPost.trim() || newPost.length > 280 || isPosting"
                   (click)="submitPost()"
                 >
-                  🐦 ツイート
+                  {{ isPosting ? '投稿中...' : '🐦 ツイート' }}
                 </button>
               </div>
             </div>
@@ -233,9 +238,11 @@ interface AsciiArt {
     }
   `]
 })
+
 export class ItemsComponent implements OnInit {
   asciiArts: AsciiArt[] = [];
   newPost: string = '';
+  isPosting: boolean = false;
 
   constructor(
     private http: HttpClient,
@@ -253,6 +260,7 @@ export class ItemsComponent implements OnInit {
 
   private loadAllAsciiArt() {
     const apiUrl = environment.apiUrl || 'http://localhost:8000';
+
     this.logService.info(
       'ascii_art_request_start',
       'Starting ASCII art request',
@@ -277,7 +285,7 @@ export class ItemsComponent implements OnInit {
 
           this.asciiArts = arts.map(art => ({
             ...art,
-            timestamp: this.randomPastTime(),
+            timestamp: art.timestamp || this.randomPastTime(),
           })).reverse();
         },
         error: (error) => {
@@ -298,17 +306,30 @@ export class ItemsComponent implements OnInit {
   }
 
   submitPost() {
-    if (!this.newPost.trim()) return;
-    this.asciiArts.unshift({
-      id: Date.now(),
-      title: '新規投稿',
+    if (!this.newPost.trim() || this.newPost.length > 280) return;
+    this.isPosting = true;
+    const apiUrl = environment.apiUrl || 'http://localhost:8000';
+    const tweet: TweetRequest = {
       content: this.newPost,
-      category: 'ユーザー投稿',
       author: 'あなた',
-      likes: 0,
-      timestamp: '今'
-    });
-    this.newPost = '';
+      category: 'ユーザー投稿'
+    };
+    this.http.post<AsciiArt>(`${apiUrl}/tweet`, tweet)
+      .subscribe({
+        next: (res) => {
+          this.asciiArts.unshift({
+            ...res,
+            timestamp: '今'
+          });
+          this.newPost = '';
+          this.isPosting = false;
+        },
+        error: (error) => {
+          // エラー時の処理
+          this.isPosting = false;
+          alert('投稿に失敗しました');
+        }
+      });
   }
 
   // ダミーの過去時間を生成
