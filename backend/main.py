@@ -10,8 +10,7 @@ import threading
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=["http://localhost:4200"],
-    allow_origins=["*"], # このズルはセキュリティ的によくないので後で修正します。。。
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
