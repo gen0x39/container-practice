@@ -23,5 +23,6 @@ spec:
       containers:
       - name: frontend
         image: ghcr.io/gen0x39/container-practice/frontend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 4200
