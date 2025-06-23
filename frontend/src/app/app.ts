@@ -13,6 +13,7 @@ import { PodInfoComponent } from './pod-info/pod-info.component';
 
     <div class="navigation">
       <a routerLink="/items" class="nav-link">Itemsページへ</a>
+      <a routerLink="/health" class="nav-link">Health Check</a>
     </div>
     <router-outlet></router-outlet>
   `

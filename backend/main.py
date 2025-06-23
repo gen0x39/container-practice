@@ -7,7 +7,56 @@ import time
 import threading
 import glob
 from pathlib import Path
+import logging
+from datetime import datetime
+import uuid
+from typing import Any, Dict
 
+# ログ設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# OpenTelemetry用の構造化ログ関数
+def log_structured_event(event_type: str, message: str, level: str = "INFO", **kwargs):
+    """OpenTelemetry対応の構造化ログ出力"""
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "level": level,
+        "event_type": event_type,
+        "message": message,
+        "service": "ascii-twitter-backend",
+        "version": "1.0.0",
+        "trace_id": str(uuid.uuid4()),
+        "span_id": str(uuid.uuid4())[:16],
+        **kwargs
+    }
+    
+    # 標準出力にJSON形式で出力
+    print(json.dumps(log_entry, ensure_ascii=False))
+    
+    # 通常のログも出力
+    log_level = getattr(logger, level.lower(), logger.info)
+    log_level(f"{event_type}: {message}")
+
+def log_request_response(request: Request, response_data: Any, status_code: int, 
+                       response_time_ms: float, request_id: str, **kwargs):
+    """リクエスト・レスポンス情報を含むログ出力"""
+    log_structured_event(
+        "request_response",
+        f"Request completed: {request.method} {request.url.path}",
+        level="INFO",
+        request_id=request_id,
+        method=request.method,
+        path=str(request.url.path),
+        query_params=dict(request.query_params),
+        client_ip=request.client.host,
+        user_agent=request.headers.get("user-agent", "unknown"),
+        status_code=status_code,
+        response_time_ms=round(response_time_ms, 2),
+        response_size_bytes=len(json.dumps(response_data, ensure_ascii=False)) if response_data else 0,
+        response_data_type=type(response_data).__name__,
+        **kwargs
+    )
 
 app = FastAPI()
 app.add_middleware(
@@ -18,108 +67,281 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    return "Hello World"
-
-@app.get("/items")
-async def get_items():
-    with open('data.json', 'r') as f:
-        data = json.load(f)
-    return data
-
-@app.get("/items/{item_id}")
-async def get_item(item_id: int):
-    with open('data.json', 'r') as f:
-        data = json.load(f)
-    for item in data:
-        if item["id"] == item_id:
-            return item
-    raise HTTPException(status_code=404, detail=f"Item with id {item_id} not found")
-
-@app.get("/ascii")
-async def get_ascii_art_list():
-    """ASCIIアートファイルの一覧を取得"""
-    ascii_dir = Path("ascii")
-    if not ascii_dir.exists():
-        return []
+@app.get("/health")
+async def health_check(request: Request):
+    """ヘルスチェックエンドポイント - OpenTelemetry対応"""
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
     
-    # .txtファイルを検索
-    txt_files = list(ascii_dir.glob("*.txt"))
-    
-    ascii_files = []
-    for i, file_path in enumerate(txt_files, 1):
-        # ファイル名からタイトルを生成
-        title = file_path.stem.replace('_', ' ').title()
-        
-        ascii_files.append({
-            "id": i,
-            "title": title,
-            "filename": file_path.name,
-            "category": "アニメ",
-            "author": "ASCIIアーティスト"
-        })
-    
-    print(f"ASCIIアートファイル一覧取得: {len(ascii_files)}件")
-    return ascii_files
-
-@app.get("/ascii/{filename}")
-async def get_ascii_art_content(filename: str):
-    """特定のASCIIアートファイルの内容を取得"""
-    file_path = Path("ascii") / filename
-    
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"File {filename} not found")
+    # リクエスト開始ログ
+    log_structured_event(
+        "health_check_start",
+        "Health check request received",
+        level="INFO",
+        request_id=request_id,
+        client_ip=request.client.host,
+        user_agent=request.headers.get("user-agent", "unknown"),
+        method="GET",
+        path="/health"
+    )
     
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # システム情報を収集
+        hostname = socket.gethostname()
+        pod_name = os.getenv("POD_NAME", hostname)
+        node_name = os.getenv("NODE_NAME", "unknown")
+        environment = os.getenv("ENVIRONMENT", "development")
         
-        print(f"ASCIIアートファイル読み込み成功: {filename}, サイズ: {len(content)}文字")
+        # ASCIIアートファイルの状態確認
+        ascii_dir = Path("ascii")
+        ascii_files_count = 0
+        ascii_files_size = 0
         
-        return {
-            "filename": filename,
-            "content": content,
-            "size": len(content)
+        if ascii_dir.exists():
+            txt_files = list(ascii_dir.glob("*.txt"))
+            ascii_files_count = len(txt_files)
+            
+            for file_path in txt_files:
+                try:
+                    ascii_files_size += file_path.stat().st_size
+                except Exception:
+                    pass
+        
+        # レスポンス時間を計算
+        response_time = (time.time() - start_time) * 1000
+        
+        # ヘルスチェック結果
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "request_id": request_id,
+            "response_time_ms": round(response_time, 2),
+            "system": {
+                "hostname": hostname,
+                "pod_name": pod_name,
+                "node_name": node_name,
+                "environment": environment,
+                "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
+            },
+            "ascii_art": {
+                "files_count": ascii_files_count,
+                "total_size_bytes": ascii_files_size,
+                "directory_exists": ascii_dir.exists()
+            },
+            "memory": {
+                "available_mb": round(os.getloadavg()[0], 2) if hasattr(os, 'getloadavg') else 0
+            }
         }
+        
+        # 成功ログ（レスポンス情報を含む）
+        log_request_response(
+            request=request,
+            response_data=health_status,
+            status_code=200,
+            response_time_ms=response_time,
+            request_id=request_id,
+            ascii_files_count=ascii_files_count,
+            ascii_files_size=ascii_files_size,
+            health_status="healthy"
+        )
+        
+        return health_status
+        
     except Exception as e:
-        print(f"ASCIIアートファイル読み込みエラー: {filename}, エラー: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error reading file {filename}")
+        # エラーログ
+        error_response_time = (time.time() - start_time) * 1000
+        error_detail = {
+            "status": "unhealthy",
+            "error": str(e),
+            "request_id": request_id,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        log_structured_event(
+            "health_check_error",
+            f"Health check failed: {str(e)}",
+            level="ERROR",
+            request_id=request_id,
+            response_time_ms=round(error_response_time, 2),
+            error_type=type(e).__name__,
+            error_message=str(e),
+            status_code=500,
+            response_data=error_detail
+        )
+        
+        raise HTTPException(status_code=500, detail=error_detail)
+
+@app.get("/")
+async def root(request: Request):
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+    
+    log_structured_event(
+        "root_access",
+        "Root endpoint accessed",
+        level="INFO",
+        request_id=request_id,
+        method="GET",
+        path="/"
+    )
+    
+    response_data = "Hello World"
+    response_time = (time.time() - start_time) * 1000
+    
+    log_request_response(
+        request=request,
+        response_data=response_data,
+        status_code=200,
+        response_time_ms=response_time,
+        request_id=request_id
+    )
+    
+    return response_data
+
+@app.get("/items")
+async def get_items(request: Request):
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+    
+    log_structured_event(
+        "items_request",
+        "Items endpoint accessed",
+        level="INFO",
+        request_id=request_id,
+        method="GET",
+        path="/items"
+    )
+    
+    try:
+        with open('data.json', 'r') as f:
+            data = json.load(f)
+        
+        response_time = (time.time() - start_time) * 1000
+        
+        log_request_response(
+            request=request,
+            response_data=data,
+            status_code=200,
+            response_time_ms=response_time,
+            request_id=request_id,
+            items_count=len(data) if isinstance(data, list) else 0
+        )
+        
+        return data
+        
+    except Exception as e:
+        error_response_time = (time.time() - start_time) * 1000
+        
+        log_structured_event(
+            "items_request_error",
+            f"Failed to load items: {str(e)}",
+            level="ERROR",
+            request_id=request_id,
+            response_time_ms=round(error_response_time, 2),
+            error_type=type(e).__name__,
+            error_message=str(e),
+            status_code=500
+        )
+        
+        raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/ascii-all")
-async def get_all_ascii_art():
+async def get_all_ascii_art(request: Request):
     """すべてのASCIIアートを一度に取得"""
-    ascii_dir = Path("ascii")
-    if not ascii_dir.exists():
-        return []
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
     
-    txt_files = list(ascii_dir.glob("*.txt"))
-    ascii_arts = []
+    log_structured_event(
+        "ascii_all_request_start",
+        "ASCII art request started",
+        level="INFO",
+        request_id=request_id,
+        method="GET",
+        path="/ascii-all"
+    )
     
-    for i, file_path in enumerate(txt_files, 1):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()  # ← ここでファイルの内容を読み込んでいます
-            
-            title = file_path.stem.replace('_', ' ').title()
-            
-            ascii_arts.append({
-                "id": i,
-                "title": title,
-                "content": content,  # ← ファイルの内容を返しています
-                "category": "アニメ",
-                "author": "ASCIIアーティスト",
-                "likes": 0
-            })
-            
-            print(f"ASCIIアート読み込み成功: {file_path.name}, サイズ: {len(content)}文字")
-            
-        except Exception as e:
-            print(f"ASCIIアート読み込みエラー: {file_path.name}, エラー: {str(e)}")
-    
-    return ascii_arts
+    try:
+        ascii_dir = Path("ascii")
+        if not ascii_dir.exists():
+            log_structured_event(
+                "ascii_all_error",
+                "ASCII directory not found",
+                level="WARNING",
+                request_id=request_id,
+                error_type="DirectoryNotFound"
+            )
+            return []
+        
+        txt_files = list(ascii_dir.glob("*.txt"))
+        ascii_arts = []
+        
+        for i, file_path in enumerate(txt_files, 1):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                title = file_path.stem.replace('_', ' ').title()
+                
+                ascii_arts.append({
+                    "id": i,
+                    "title": title,
+                    "content": content,
+                    "category": "アニメ",
+                    "author": "ASCIIアーティスト",
+                    "likes": 0
+                })
+                
+                log_structured_event(
+                    "ascii_file_loaded",
+                    f"ASCII file loaded successfully",
+                    level="DEBUG",
+                    request_id=request_id,
+                    filename=file_path.name,
+                    file_size=len(content),
+                    file_id=i
+                )
+                
+            except Exception as e:
+                log_structured_event(
+                    "ascii_file_error",
+                    f"Failed to load ASCII file: {str(e)}",
+                    level="ERROR",
+                    request_id=request_id,
+                    filename=file_path.name,
+                    error_type=type(e).__name__,
+                    error_message=str(e)
+                )
+        
+        response_time = (time.time() - start_time) * 1000
+        
+        log_request_response(
+            request=request,
+            response_data=ascii_arts,
+            status_code=200,
+            response_time_ms=response_time,
+            request_id=request_id,
+            files_loaded=len(ascii_arts),
+            total_files=len(txt_files)
+        )
+        
+        return ascii_arts
+        
+    except Exception as e:
+        error_response_time = (time.time() - start_time) * 1000
+        
+        log_structured_event(
+            "ascii_all_request_error",
+            f"ASCII art request failed: {str(e)}",
+            level="ERROR",
+            request_id=request_id,
+            response_time_ms=round(error_response_time, 2),
+            error_type=type(e).__name__,
+            error_message=str(e),
+            status_code=500
+        )
+        
+        raise HTTPException(status_code=500, detail={"error": str(e)})
 
-    
 @app.get("/frontend-info")
 def get_frontend_info(request: Request, response: Response):
     """フロントエンドのPod情報を返すエンドポイント"""

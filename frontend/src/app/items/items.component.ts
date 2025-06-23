@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../environments/environment';
+import { LogService } from '../services/log.service';
 
 interface AsciiArt {
   id: number;
@@ -11,6 +12,7 @@ interface AsciiArt {
   category: string;
   author: string;
   likes: number;
+  timestamp: string;
 }
 
 @Component({
@@ -47,179 +49,225 @@ interface AsciiArt {
     </div>
   `,
   styles: [`
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      font-family: 'Courier New', monospace;
-    }
-    
-    .ascii-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    
-    .ascii-card {
-      background: white;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .ascii-header {
+    .twitter-container {
+      background: #e6ecf0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', 'Arial', sans-serif;
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 15px;
+      flex-direction: column;
+      align-items: center;
     }
-    
-    .ascii-title {
+    .header {
+      width: 100%;
+      background: #1da1f2;
+      color: white;
+      padding: 32px 0 16px 0;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-bottom: 16px;
+    }
+    .header h1 {
       margin: 0;
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: #333;
-      flex: 1;
-      margin-right: 12px;
+      font-size: 2.2rem;
+      font-weight: bold;
+      letter-spacing: 2px;
     }
-    
-    .ascii-category {
-      background: #e3f2fd;
-      color: #1976d2;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      text-transform: capitalize;
-      white-space: nowrap;
+    .header p {
+      margin: 8px 0 0 0;
+      font-size: 1.1rem;
+      opacity: 0.9;
     }
-    
-    .ascii-content {
-      margin: 15px 0;
-      background: #f9f9f9;
-      border-radius: 4px;
-      padding: 15px;
-      overflow-x: auto;
+    .main-content {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
     }
-    
-    .ascii-art {
-      margin: 0;
+    .post-form {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 24px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      padding: 16px;
+    }
+    .post-textarea {
+      width: 100%;
+      min-height: 80px;
       font-family: 'Courier New', monospace;
-      font-size: 12px;
-      line-height: 1.2;
-      white-space: pre;
-      color: #333;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      resize: vertical;
     }
-    
-    .ascii-footer {
+    .post-btn {
+      align-self: flex-end;
+      background: #1da1f2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .post-btn:hover {
+      background: #0d8ddb;
+    }
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .tweet {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    .tweet-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 15px;
+      margin-bottom: 8px;
     }
-    
-    .ascii-author {
-      font-size: 0.9rem;
-      color: #666;
-    }
-    
-    .ascii-actions {
+    .user-info {
       display: flex;
-      gap: 10px;
+      gap: 8px;
+      align-items: center;
     }
-    
+    .username {
+      font-weight: bold;
+      color: #1da1f2;
+    }
+    .timestamp {
+      color: #888;
+      font-size: 0.9rem;
+    }
+    .category {
+      background: #e6ecf0;
+      color: #1da1f2;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+    .tweet-content {
+      margin-bottom: 8px;
+    }
+    .ascii-art {
+      font-family: 'Courier New', monospace;
+      font-size: 1.1rem;
+      white-space: pre;
+      background: #f7f7f7;
+      border-radius: 4px;
+      padding: 8px;
+      overflow-x: auto;
+    }
+    .tweet-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
     .like-btn {
       background: none;
-      border: 1px solid #ccc;
-      padding: 8px 12px;
-      border-radius: 4px;
+      border: none;
+      color: #e0245e;
+      font-size: 1.1rem;
       cursor: pointer;
-      font-size: 0.9rem;
-      transition: all 0.2s ease;
+      transition: color 0.2s;
     }
-    
     .like-btn:hover {
-      background: #f0f0f0;
-      border-color: #999;
-    }
-    
-    @media (max-width: 600px) {
-      .ascii-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-      
-      .ascii-footer {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-      
-      .ascii-art {
-        font-size: 10px;
-      }
+      color: #ad1457;
     }
   `]
 })
 export class ItemsComponent implements OnInit {
   asciiArts: AsciiArt[] = [];
+  newPost: string = '';
 
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient,
+    private logService: LogService
+  ) { }
 
   ngOnInit() {
-    // chiikawa_01.txtファイルを読み込む
-    this.loadAsciiArt();
+    this.logService.info(
+      'component_init',
+      'ItemsComponent initialized',
+      { component: 'ItemsComponent' }
+    );
+    this.loadAllAsciiArt();
   }
 
-  private loadAsciiArt() {
-    // 新しいasciiディレクトリからファイルを読み込み
-    const apiUrl = environment.apiUrl
-    
-    // バックエンドの/ascii-allエンドポイントからすべてのASCIIアートを取得
+  private loadAllAsciiArt() {
+    const apiUrl = environment.apiUrl || 'http://localhost:8000';
+
+    this.logService.info(
+      'ascii_art_request_start',
+      'Starting ASCII art request',
+      { api_url: `${apiUrl}/ascii-all` }
+    );
+
     this.http.get<AsciiArt[]>(`${apiUrl}/ascii-all`)
       .subscribe({
         next: (arts: AsciiArt[]) => {
-          console.log('ASCIIアート読み込み成功:', { 
-            count: arts.length,
-            arts: arts.map(art => ({ 
-              id: art.id, 
-              title: art.title,
-              contentLength: art.content.length 
-            })),
-            timestamp: new Date().toISOString()
-          });
-          
-          this.asciiArts = arts;
+          this.logService.info(
+            'ascii_art_request_success',
+            'ASCII art request completed successfully',
+            {
+              count: arts.length,
+              arts: arts.map(art => ({
+                id: art.id,
+                title: art.title,
+                content_length: art.content.length
+              }))
+            }
+          );
+
+          this.asciiArts = arts.map(art => ({
+            ...art,
+            timestamp: this.randomPastTime(),
+          })).reverse();
         },
         error: (error) => {
-          console.error('ASCIIアート読み込みエラー:', {
-            error: error,
-            apiUrl: `${apiUrl}/ascii-all`,
-            timestamp: new Date().toISOString()
-          });
-          
-          // エラー時のフォールバック
-          this.asciiArts = [{
-            id: 1,
-            title: 'ちいかわ（フォールバック）',
-            content: `
-  /\\_/\\
- ( o.o )
-  > ^ <
-            `,
-            category: 'アニメ',
-            author: 'システム',
-            likes: 0
-          }];
+          this.logService.error(
+            'ascii_art_request_error',
+            'ASCII art request failed',
+            {
+              error_message: error.message,
+              error_type: error.name
+            }
+          );
         }
       });
   }
 
   likeArt(art: AsciiArt) {
     art.likes++;
-    console.log('いいね追加:', { artId: art.id, newLikes: art.likes });
+  }
+
+  submitPost() {
+    if (!this.newPost.trim()) return;
+    this.asciiArts.unshift({
+      id: Date.now(),
+      title: '新規投稿',
+      content: this.newPost,
+      category: 'ユーザー投稿',
+      author: 'あなた',
+      likes: 0,
+      timestamp: '今'
+    });
+    this.newPost = '';
+  }
+
+  // ダミーの過去時間を生成
+  private randomPastTime(): string {
+    const mins = Math.floor(Math.random() * 59) + 1;
+    return `${mins}分前`;
   }
 }
