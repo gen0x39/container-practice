@@ -26,6 +26,7 @@ class TweetRequest(BaseModel):
     content: str
     author: str = "ユーザー"
     category: str = "ユーザー投稿"
+    ascii_content: str | None = None  # ←アスキーアート本体
 
 # OpenTelemetry用の構造化ログ関数
 def log_structured_event(event_type: str, message: str, level: str = "INFO", **kwargs):
@@ -415,245 +416,6 @@ def load_test(seconds: int = 10, cpu_intensive: bool = True):
         "execution_time": time.time() - start_time
     }
 
-@app.post("/tweet")
-async def create_tweet(request: Request, tweet_data: TweetRequest):
-    """ツイートを投稿してテキストファイルに保存"""
-    start_time = time.time()
-    request_id = str(uuid.uuid4())
-    
-    log_structured_event(
-        "tweet_post_start",
-        "Tweet post request started",
-        level="INFO",
-        request_id=request_id,
-        method="POST",
-        path="/tweet",
-        author=tweet_data.author,
-        content_length=len(tweet_data.content)
-    )
-    
-    try:
-        # asciiディレクトリの作成（存在しない場合）
-        ascii_dir = Path("ascii")
-        ascii_dir.mkdir(exist_ok=True)
-
-        # tweetディレクトリの作成（存在しない場合）
-        tweet_dir = Path("tweet")
-        tweet_dir.mkdir(exist_ok=True)
-        
-        # ツイートIDを生成
-        tweet_id = str(uuid.uuid4())
-        filename = f"tweet_{tweet_id}.txt"
-        file_path = ascii_dir / filename
-        
-        # ツイート内容をファイルに保存
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(tweet_data.content)
-        
-        # レスポンス用のツイートオブジェクトを作成
-        tweet_response = {
-            "tweet": tweet_data.content,
-            "like": random.randint(0, 2000),
-            "rt": random.randint(0, 500),
-            "id": tweet_id,
-            "title": "新規ツイート",
-            "category": tweet_data.category,
-            "author": tweet_data.author,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "filename": filename
-        }
-
-        # JSONファイルとしてtweetディレクトリに保存
-        json_filename = f"tweet_{tweet_id}.json"
-        json_file_path = tweet_dir / json_filename
-        
-        with open(json_file_path, 'w', encoding='utf-8') as f:
-            json.dump(tweet_response, f, ensure_ascii=False, indent=2)
-        
-        
-        response_time = (time.time() - start_time) * 1000
-        
-        log_request_response(
-            request=request,
-            response_data=tweet_response,
-            status_code=201,
-            response_time_ms=response_time,
-            request_id=request_id,
-            tweet_id=tweet_id,
-            filename=filename
-        )
-        
-        return tweet_response
-        
-    except Exception as e:
-        error_response_time = (time.time() - start_time) * 1000
-        
-        log_structured_event(
-            "tweet_post_error",
-            f"Tweet post failed: {str(e)}",
-            level="ERROR",
-            request_id=request_id,
-            response_time_ms=round(error_response_time, 2),
-            error_type=type(e).__name__,
-            error_message=str(e),
-            status_code=500
-        )
-        
-        raise HTTPException(status_code=500, detail={"error": str(e)})
-
-@app.post("/upload-image")
-async def upload_image_and_convert(
-    request: Request,
-    file: UploadFile = File(...),
-    author: str = Form("ユーザー"),
-    category: str = Form("画像変換")
-):
-    """画像をアップロードしてアスキーアートに変換"""
-    start_time = time.time()
-    request_id = str(uuid.uuid4())
-    
-    log_structured_event(
-        "image_upload_start",
-        "Image upload and conversion started",
-        level="INFO",
-        request_id=request_id,
-        method="POST",
-        path="/upload-image",
-        filename=file.filename,
-        author=author,
-        file_size=file.size if file.size else 0
-    )
-    
-    try:
-        # ファイル形式チェック
-        if not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="画像ファイルのみアップロード可能です")
-        
-        # ファイルサイズチェック（10MB制限）
-        if file.size and file.size > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="ファイルサイズは10MB以下にしてください")
-        
-        # 画像データを読み込み
-        image_data = await file.read()
-        
-        # 一時ファイルとして保存してからascii_magicで処理
-        import tempfile
-        import os
-        
-        ascii_content = ""
-        temp_file_path = None
-        
-        try:
-            # 一時ファイルに画像を保存
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                temp_file.write(image_data)
-                temp_file_path = temp_file.name
-            
-            # ascii_magicでアスキーアート生成（モノクロームで背景色なし）
-            my_art = ascii_magic.from_image(temp_file_path)
-            my_output = my_art.to_ascii(
-                columns=140, 
-                monochrome=True,  # 背景色を無効にして純粋なテキストに
-                char=None            # デフォルトの文字セットを使用（より豊富な表現）
-            )
-            ascii_content = str(my_output)
-            
-            # 標準出力にアスキーアートを出力
-            print("=== アップロードされた画像のアスキーアート ===")
-            print(ascii_content)
-            print("==========================================")
-            
-            log_structured_event(
-                "ascii_conversion_success",
-                "ASCII art conversion completed and printed to stdout",
-                level="INFO",
-                request_id=request_id,
-                ascii_length=len(ascii_content),
-                columns=80,
-                monochrome=True
-            )
-            
-        finally:
-            # 一時ファイルを削除
-            if temp_file_path and os.path.exists(temp_file_path):
-                os.unlink(temp_file_path)
-
-        # ツイートIDを生成
-        tweet_id = str(uuid.uuid4())
-        filename = f"tweet_{tweet_id}.txt"
-        
-        # asciiディレクトリの作成（存在しない場合）
-        ascii_dir = Path("ascii")
-        ascii_dir.mkdir(exist_ok=True)
-        
-        # アスキーアートをファイルに保存
-        file_path = ascii_dir / filename
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(ascii_content)
-        
-        # tweetディレクトリにもJSONとして保存
-        tweet_dir = Path("tweet")
-        tweet_dir.mkdir(exist_ok=True)
-        
-        # レスポンス用のツイートオブジェクトを作成
-        tweet_response = {
-            "tweet": ascii_content,
-            "like": random.randint(0, 2000),
-            "rt": random.randint(0, 500),
-            "id": tweet_id,
-            "title": f"画像変換: {file.filename}",
-            "category": category,
-            "author": author,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "filename": filename,
-            "original_image": file.filename,
-            "ascii_columns": 80,
-            "monochrome": True
-        }
-        
-        # JSONファイルとしてtweetディレクトリに保存
-        json_filename = f"tweet_{tweet_id}.json"
-        json_file_path = tweet_dir / json_filename
-        
-        with open(json_file_path, 'w', encoding='utf-8') as f:
-            json.dump(tweet_response, f, ensure_ascii=False, indent=2)
-        
-        response_time = (time.time() - start_time) * 1000
-        
-        log_request_response(
-            request=request,
-            response_data=tweet_response,
-            status_code=201,
-            response_time_ms=response_time,
-            request_id=request_id,
-            tweet_id=tweet_id,
-            filename=filename,
-            original_image=file.filename,
-            ascii_length=len(ascii_content),
-            ascii_columns=80,
-            monochrome=True
-        )
-        
-        return tweet_response
-        
-    except HTTPException:
-        # HTTPExceptionはそのまま再送出
-        raise
-    except Exception as e:
-        error_response_time = (time.time() - start_time) * 1000
-        
-        log_structured_event(
-            "image_upload_error",
-            f"Image upload failed: {str(e)}",
-            level="ERROR",
-            request_id=request_id,
-            response_time_ms=round(error_response_time, 2),
-            error_type=type(e).__name__,
-            error_message=str(e),
-            status_code=500
-        )
-        
-        raise HTTPException(status_code=500, detail={"error": str(e)})
 
 @app.get("/tweets")
 async def get_all_tweets(request: Request):
@@ -735,6 +497,274 @@ async def get_all_tweets(request: Request):
         log_structured_event(
             "tweets_request_error",
             f"Tweets request failed: {str(e)}",
+            level="ERROR",
+            request_id=request_id,
+            response_time_ms=round(error_response_time, 2),
+            error_type=type(e).__name__,
+            error_message=str(e),
+            status_code=500
+        )
+        
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+class TweetRequest(BaseModel):
+    content: str
+    author: str = "ユーザー"
+    category: str = "ユーザー投稿"
+    ascii_content: str | None = None  # アスキーアートの内容（オプション）
+
+@app.post("/tweet")
+async def create_tweet(request: Request, tweet_data: TweetRequest):
+    """ツイートを投稿してテキストファイルに保存"""
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+    
+    log_structured_event(
+        "tweet_post_start",
+        "Tweet post request started",
+        level="INFO",
+        request_id=request_id,
+        method="POST",
+        path="/tweet",
+        author=tweet_data.author,
+        content_length=len(tweet_data.content),
+        has_ascii=tweet_data.ascii_content is not None  # この行も修正
+    )
+    
+    try:
+        # asciiディレクトリの作成（存在しない場合）
+        ascii_dir = Path("ascii")
+        ascii_dir.mkdir(exist_ok=True)
+
+        # tweetディレクトリの作成（存在しない場合）
+        tweet_dir = Path("tweet")
+        tweet_dir.mkdir(exist_ok=True)
+        
+        # ツイートIDを生成
+        tweet_id = str(uuid.uuid4())
+        filename = f"tweet_{tweet_id}.txt"
+        file_path = ascii_dir / filename
+        
+        # アスキーアートが含まれている場合は保存
+        ascii_path = None
+        tweet_body = tweet_data.content
+        
+        if tweet_data.ascii_content:  # この行も修正
+            # アスキーアートをファイルに保存
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(tweet_data.ascii_content)  # この行も修正
+            ascii_path = f"ascii/{filename}"
+            tweet_body = tweet_data.content + "\n" + tweet_data.ascii_content  # この行も修正
+            
+            log_structured_event(
+                "ascii_saved",
+                "ASCII art saved to file",
+                level="INFO",
+                request_id=request_id,
+                ascii_path=ascii_path,
+                ascii_length=len(tweet_data.ascii_content)  # この行も修正
+            )
+        
+        # レスポンス用のツイートオブジェクトを作成
+        tweet_response = {
+            "tweet": tweet_body,  # テキスト＋アスキーアート
+            "like": random.randint(0, 2000),
+            "rt": random.randint(0, 500),
+            "id": tweet_id,
+            "title": "新規ツイート",
+            "category": tweet_data.category,
+            "author": tweet_data.author,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "filename": filename,
+            "ascii": ascii_path  # アスキーアートのパス（含まれていない場合はNone）
+        }
+
+        # JSONファイルとしてtweetディレクトリに保存
+        json_filename = f"tweet_{tweet_id}.json"
+        json_file_path = tweet_dir / json_filename
+        
+        with open(json_file_path, 'w', encoding='utf-8') as f:
+            json.dump(tweet_response, f, ensure_ascii=False, indent=2)
+        
+        response_time = (time.time() - start_time) * 1000
+        
+        log_request_response(
+            request=request,
+            response_data=tweet_response,
+            status_code=201,
+            response_time_ms=response_time,
+            request_id=request_id,
+            tweet_id=tweet_id,
+            filename=filename,
+            ascii_path=ascii_path
+        )
+        
+        return tweet_response
+        
+    except Exception as e:
+        error_response_time = (time.time() - start_time) * 1000
+        
+        log_structured_event(
+            "tweet_post_error",
+            f"Tweet post failed: {str(e)}",
+            level="ERROR",
+            request_id=request_id,
+            response_time_ms=round(error_response_time, 2),
+            error_type=type(e).__name__,
+            error_message=str(e),
+            status_code=500
+        )
+        
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+@app.post("/upload-image")
+async def upload_image_and_convert(
+    request: Request,
+    file: UploadFile = File(...),
+    author: str = Form("ユーザー"),
+    category: str = Form("画像変換")
+):
+    """画像をアップロードしてアスキーアートに変換"""
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+    
+    log_structured_event(
+        "image_upload_start",
+        "Image upload and conversion started",
+        level="INFO",
+        request_id=request_id,
+        method="POST",
+        path="/upload-image",
+        filename=file.filename,
+        author=author,
+        file_size=file.size if file.size else 0
+    )
+    
+    try:
+        # ファイル形式チェック
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="画像ファイルのみアップロード可能です")
+        
+        # ファイルサイズチェック（10MB制限）
+        if file.size and file.size > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="ファイルサイズは10MB以下にしてください")
+        
+        # 画像データを読み込み
+        image_data = await file.read()
+        
+        # 一時ファイルとして保存してからascii_magicで処理
+        import tempfile
+        import os
+        
+        ascii_content = ""
+        temp_file_path = None
+        
+        try:
+            # 一時ファイルに画像を保存
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                temp_file.write(image_data)
+                temp_file_path = temp_file.name
+            
+            # ascii_magicでアスキーアート生成（高解像度設定）
+            my_art = ascii_magic.from_image(temp_file_path)
+            my_output = my_art.to_ascii(
+                columns=140,         # 横幅を大幅に増加（より細かい表現）
+                monochrome=True,     # 背景色を無効にして純粋なテキストに
+                char=None            # デフォルトの文字セットを使用（より豊富な表現）
+            )
+            ascii_content = str(my_output)
+            
+            # 標準出力にアスキーアートを出力
+            print("=== アップロードされた画像のアスキーアート ===")
+            print(ascii_content)
+            print("==========================================")
+            
+            log_structured_event(
+                "ascii_conversion_success",
+                "ASCII art conversion completed and printed to stdout",
+                level="INFO",
+                request_id=request_id,
+                ascii_length=len(ascii_content),
+                columns=200,
+                width_ratio=0.5,
+                monochrome=True
+            )
+            
+        finally:
+            # 一時ファイルを削除
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+
+        # ツイートIDを生成
+        tweet_id = str(uuid.uuid4())
+        filename = f"tweet_{tweet_id}.txt"
+        
+        # asciiディレクトリの作成（存在しない場合）
+        ascii_dir = Path("ascii")
+        ascii_dir.mkdir(exist_ok=True)
+        
+        # アスキーアートをファイルに保存
+        file_path = ascii_dir / filename
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(ascii_content)
+        
+        # tweetディレクトリにもJSONとして保存
+        tweet_dir = Path("tweet")
+        tweet_dir.mkdir(exist_ok=True)
+        
+        # レスポンス用のツイートオブジェクトを作成
+        tweet_response = {
+            "tweet": ascii_content,  # ←ここにアスキーアート本体
+            "like": random.randint(0, 2000),
+            "rt": random.randint(0, 500),
+            "id": tweet_id,
+            "title": f"画像変換: {file.filename}",
+            "category": category,
+            "author": author,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "filename": filename,
+            "original_image": file.filename,
+            "ascii": f"ascii/{filename}",  # ファイルパス
+            "ascii_content": ascii_content # ←アスキーアート本体も返す
+        }
+        
+        # JSONファイルとしてtweetディレクトリに保存
+        json_filename = f"tweet_{tweet_id}.json"
+        json_file_path = tweet_dir / json_filename
+        
+        with open(json_file_path, 'w', encoding='utf-8') as f:
+            json.dump(tweet_response, f, ensure_ascii=False, indent=2)
+        
+        response_time = (time.time() - start_time) * 1000
+        
+        log_request_response(
+            request=request,
+            response_data=tweet_response,
+            status_code=201,
+            response_time_ms=response_time,
+            request_id=request_id,
+            tweet_id=tweet_id,
+            filename=filename,
+            original_image=file.filename,
+            ascii_length=len(ascii_content),
+            ascii_path=f"ascii/{filename}",
+            ascii_columns=200,
+            width_ratio=0.5,
+            monochrome=True
+        )
+        
+        return tweet_response
+        
+    except HTTPException:
+        # HTTPExceptionはそのまま再送出
+        raise
+    except Exception as e:
+        error_response_time = (time.time() - start_time) * 1000
+        
+        log_structured_event(
+            "image_upload_error",
+            f"Image upload failed: {str(e)}",
             level="ERROR",
             request_id=request_id,
             response_time_ms=round(error_response_time, 2),
