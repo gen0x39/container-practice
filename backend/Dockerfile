@@ -7,6 +7,10 @@ WORKDIR /app
 # 非rootユーザーの作成
 RUN useradd -m -u 1000 appuser
 
+# 必要なディレクトリを作成し、権限を設定
+RUN mkdir -p /app/ascii /app/tweet && \
+    chown -R appuser:appuser /app
+
 # アプリケーションコードのコピー
 COPY --chown=appuser:appuser main.py /app/main.py
 COPY --chown=appuser:appuser requirements.txt /app/requirements.txt

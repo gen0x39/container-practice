@@ -7,10 +7,9 @@ metadata:
     app.kubernetes.io/name: frontend
   annotations:
     argocd-image-updater.argoproj.io/image-list: frontend=ghcr.io/gen0x39/container-practice/frontend
-    argocd-image-updater.argoproj.io/frontend.update-strategy: semver
-    argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^(latest|v[0-9]+\.[0-9]+\.[0-9]+|[a-f0-9]{7,})$ # SHAタグも許可
+    argocd-image-updater.argoproj.io/frontend.update-strategy: latest
+    argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^(latest|v[0-9]+\.[0-9]+\.[0-9]+)$
     argocd-image-updater.argoproj.io/frontend.force-update: "true"
-    argocd-image-updater.argoproj.io/frontend.pull-secret: pullsecret:argocd/ghcr-secret
 spec:
   replicas: 3
   selector:
@@ -27,3 +26,15 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 4200
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "4200"

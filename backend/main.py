@@ -535,11 +535,21 @@ async def create_tweet(request: Request, tweet_data: TweetRequest):
     try:
         # asciiディレクトリの作成（存在しない場合）
         ascii_dir = Path("ascii")
-        ascii_dir.mkdir(exist_ok=True)
-
+        try:
+            ascii_dir.mkdir(exist_ok=True, mode=0o755)
+        except PermissionError:
+            # 権限エラーの場合は/tmpディレクトリを使用
+            ascii_dir = Path("/tmp/ascii")
+            ascii_dir.mkdir(exist_ok=True, mode=0o755)
+        
         # tweetディレクトリの作成（存在しない場合）
         tweet_dir = Path("tweet")
-        tweet_dir.mkdir(exist_ok=True)
+        try:
+            tweet_dir.mkdir(exist_ok=True, mode=0o755)
+        except PermissionError:
+            # 権限エラーの場合は/tmpディレクトリを使用
+            tweet_dir = Path("/tmp/tweet")
+            tweet_dir.mkdir(exist_ok=True, mode=0o755)
         
         # ツイートIDを生成
         tweet_id = str(uuid.uuid4())
@@ -702,7 +712,12 @@ async def upload_image_and_convert(
         
         # asciiディレクトリの作成（存在しない場合）
         ascii_dir = Path("ascii")
-        ascii_dir.mkdir(exist_ok=True)
+        try:
+            ascii_dir.mkdir(exist_ok=True, mode=0o755)
+        except PermissionError:
+            # 権限エラーの場合は/tmpディレクトリを使用
+            ascii_dir = Path("/tmp/ascii")
+            ascii_dir.mkdir(exist_ok=True, mode=0o755)
         
         # アスキーアートをファイルに保存
         file_path = ascii_dir / filename
@@ -711,7 +726,12 @@ async def upload_image_and_convert(
         
         # tweetディレクトリにもJSONとして保存
         tweet_dir = Path("tweet")
-        tweet_dir.mkdir(exist_ok=True)
+        try:
+            tweet_dir.mkdir(exist_ok=True, mode=0o755)
+        except PermissionError:
+            # 権限エラーの場合は/tmpディレクトリを使用
+            tweet_dir = Path("/tmp/tweet")
+            tweet_dir.mkdir(exist_ok=True, mode=0o755)
         
         # レスポンス用のツイートオブジェクトを作成
         tweet_response = {
