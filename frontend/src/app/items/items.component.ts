@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { environment } from '../../environments/environment';
 import { LogService } from '../services/log.service';
 import { FormsModule } from '@angular/forms';
+import { EventEmitter, Output } from '@angular/core';
 
 interface AsciiArt {
   id: number;
@@ -14,6 +15,21 @@ interface AsciiArt {
   author: string;
   likes: number;
   timestamp: string;
+  tweet: string;
+  like: number;
+  rt: number;
+}
+
+interface Tweet {
+  tweet: string;
+  like: number;
+  rt: number;
+  id: string;
+  title: string;
+  category: string;
+  author: string;
+  timestamp: string;
+  filename: string;
 }
 
 interface TweetRequest {
@@ -27,78 +43,136 @@ interface TweetRequest {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="twitter-container">
-      <!-- Twitterライクなヘッダー -->
-      <div class="header">
-        <h1>🐦 ASCII Twitter</h1>
-        <p>ASCIIアートでつぶやこう！</p>
-      </div>
+  <div class="twitter-container">
+    <!-- Twitterライクなヘッダー -->
+    <div class="header">
+      <h1>🐦 ASCII Twitter</h1>
+      <p>ASCIIアートでつぶやこう！</p>
+    </div>
 
-      <div class="main-content">
-        <!-- 投稿フォーム -->
-        <div class="post-form">
-          <div class="post-header">
-            <div class="user-avatar">👤</div>
-            <div class="post-input-container">
-              <textarea 
-                class="post-textarea" 
-                placeholder="ASCIIアートでつぶやいてみよう..."
-                [(ngModel)]="newPost"
-                maxlength="280"
-              ></textarea>
-              <div class="post-footer">
-                <span class="char-count" [class.char-limit]="newPost.length > 260">
-                  {{ newPost.length }}/280
-                </span>
-                <button 
-                  class="post-btn" 
-                  [disabled]="!newPost.trim() || newPost.length > 280 || isPosting"
-                  (click)="submitPost()"
-                >
-                  {{ isPosting ? '投稿中...' : '🐦 ツイート' }}
-                </button>
-              </div>
+    <div class="main-content">
+      <!-- 投稿フォーム -->
+      <div class="post-form">
+        <div class="post-header">
+          <div class="user-avatar">👤</div>
+          <div class="post-input-container">
+            <textarea 
+              class="post-textarea" 
+              placeholder="ASCIIアートでつぶやいてみよう..."
+              [(ngModel)]="newPost"
+              maxlength="280"
+            ></textarea>
+            <div class="post-footer">
+              <span class="char-count" [class.char-limit]="newPost.length > 260">
+                {{ newPost.length }}/280
+              </span>
+              <button 
+                class="post-btn" 
+                [disabled]="!newPost.trim() || newPost.length > 280 || isPosting"
+                (click)="submitPost()"
+              >
+                {{ isPosting ? '投稿中...' : '🐦 ツイート' }}
+              </button>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- タイムライン -->
-        <div class="timeline">
-          <div *ngFor="let art of asciiArts" class="tweet">
-            <div class="tweet-header">
-              <div class="user-info">
-                <div class="user-avatar">👤</div>
-                <div class="user-details">
-                  <span class="username">{{ art.author }}</span>
-                  <span class="timestamp">· {{ art.timestamp }}</span>
-                </div>
+      <div class="compose-container">
+        <h3>画像からアスキーアートを投稿</h3>
+        <div class="image-upload-area"
+            [class.drag-over]="isDragOver"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)">
+          <input type="file" accept="image/*" (change)="onFileSelected($event)" #fileInput hidden />
+          <button type="button" (click)="fileInput.click()">画像を選択</button>
+          <span *ngIf="selectedImage" class="preview-label">プレビュー:</span>
+          <img *ngIf="selectedImage" [src]="selectedImage" class="image-preview" />
+          <button *ngIf="selectedImage" type="button" (click)="removeImage()">画像を削除</button>
+        </div>
+        <button class="upload-btn" [disabled]="!imageFile || isUploading" (click)="uploadImage()">
+          {{ isUploading ? 'アップロード中...' : '画像をアスキーアート化して投稿' }}
+        </button>
+      </div>
+
+      <!-- ツイートタイムライン -->
+      <div class="timeline">
+        <h2>ツイート</h2>
+        <div *ngIf="isLoading" class="loading">読み込み中...</div>
+        
+        <div *ngFor="let tweet of tweets" class="tweet">
+          <div class="tweet-header">
+            <div class="user-info">
+              <div class="user-avatar">👤</div>
+              <div class="user-details">
+                <span class="username">{{ tweet.author }}</span>
+                <span class="timestamp">· {{ tweet.timestamp | date:'short' }}</span>
               </div>
-              <span class="category">{{ art.category }}</span>
             </div>
-            
-            <div class="tweet-content">
-              <h3 class="tweet-title">{{ art.title }}</h3>
-              <pre class="ascii-art">{{ art.content }}</pre>
+            <span class="category">{{ tweet.category }}</span>
+          </div>
+          
+          <div class="tweet-content">
+            <h3 class="tweet-title">{{ tweet.title }}</h3>
+            <pre class="ascii-art">{{ tweet.tweet }}</pre>
+          </div>
+          
+          <div class="tweet-actions">
+            <button class="action-btn like-btn" (click)="likeTweet(tweet)">
+              <span class="action-icon" [class.liked]="tweet.like > 0">❤️</span>
+              <span class="action-count">{{ tweet.like }}</span>
+            </button>
+            <button class="action-btn retweet-btn" (click)="retweetTweet(tweet)">
+              <span class="action-icon">🔄</span>
+              <span class="action-count">{{ tweet.rt }}</span>
+            </button>
+            <button class="action-btn reply-btn">
+              <span class="action-icon">💬</span>
+              <span class="action-count">0</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ASCIIアートタイムライン -->
+      <div class="timeline">
+        <h2>ASCIIアート</h2>
+        <div *ngFor="let art of asciiArts" class="tweet">
+          <div class="tweet-header">
+            <div class="user-info">
+              <div class="user-avatar">👤</div>
+              <div class="user-details">
+                <span class="username">{{ art.author }}</span>
+                <span class="timestamp">· {{ art.timestamp | date:'short' }}</span>
+              </div>
             </div>
-            
-            <div class="tweet-actions">
-              <button class="action-btn like-btn" (click)="likeArt(art)">
-                <span class="action-icon" [class.liked]="art.likes > 0">❤️</span>
-                <span class="action-count">{{ art.likes }}</span>
-              </button>
-              <button class="action-btn retweet-btn">
-                <span class="action-icon">🔄</span>
-                <span class="action-count">0</span>
-              </button>
-              <button class="action-btn reply-btn">
-                <span class="action-icon">💬</span>
-                <span class="action-count">0</span>
-              </button>
-            </div>
+            <span class="category">{{ art.category }}</span>
+          </div>
+          
+          <div class="tweet-content">
+            <h3 class="tweet-title">{{ art.title }}</h3>
+            <pre class="ascii-art">{{ art.tweet || art.content }}</pre>
+          </div>
+          
+          <div class="tweet-actions">
+            <button class="action-btn like-btn" (click)="likeArt(art)">
+              <span class="action-icon" [class.liked]="(art.like || art.likes) > 0">❤️</span>
+              <span class="action-count">{{ art.like || art.likes }}</span>
+            </button>
+            <button class="action-btn retweet-btn">
+              <span class="action-icon">🔄</span>
+              <span class="action-count">{{ art.rt || 0 }}</span>
+            </button>
+            <button class="action-btn reply-btn">
+              <span class="action-icon">💬</span>
+              <span class="action-count">0</span>
+            </button>
           </div>
         </div>
       </div>
     </div>
+  </div>
   `,
   styles: [`
     .twitter-container {
@@ -131,7 +205,7 @@ interface TweetRequest {
     }
     .main-content {
       width: 100%;
-      max-width: 600px;
+      max-width: 900px;  /* 600pxから900pxに変更 */
       margin: 0 auto;
     }
     .post-form {
@@ -241,21 +315,53 @@ interface TweetRequest {
 
 export class ItemsComponent implements OnInit {
   asciiArts: AsciiArt[] = [];
+  tweets: Tweet[] = [];
   newPost: string = '';
   isPosting: boolean = false;
+  isLoading: boolean = false;
+
+  selectedImage: string | ArrayBuffer | null = null;
+  imageFile: File | null = null;
+  isUploading: boolean = false;
+  isDragOver: boolean = false;
+  @Output() asciiArtPosted = new EventEmitter<any>();
 
   constructor(
     private http: HttpClient,
     private logService: LogService
   ) { }
 
+  /*
+ngOnInit() {
+  this.logService.info(
+    'component_init',
+    'ItemsComponent initialized',
+    { component: 'ItemsComponent' }
+  );
+  this.loadAllAsciiArt();
+}*/
+
   ngOnInit() {
-    this.logService.info(
-      'component_init',
-      'ItemsComponent initialized',
-      { component: 'ItemsComponent' }
-    );
     this.loadAllAsciiArt();
+    this.loadAllTweets();
+  }
+
+  private loadAllTweets() {
+    this.isLoading = true;
+    this.http.get<Tweet[]>(`${environment.apiUrl}/tweets`)
+      .subscribe({
+        next: (data) => {
+          this.tweets = data;
+          this.logService.log('ツイートを読み込みました', String(data.length));
+        },
+        error: (error) => {
+          console.error('ツイートの読み込みに失敗しました:', error);
+          this.logService.log('ツイートの読み込みに失敗しました', error);
+        },
+        complete: () => {
+          this.isLoading = false;
+        }
+      });
   }
 
   private loadAllAsciiArt() {
@@ -302,32 +408,46 @@ export class ItemsComponent implements OnInit {
   }
 
   likeArt(art: AsciiArt) {
-    art.likes++;
+    // いいね機能の実装（実際のアプリではAPIを呼び出してデータベースを更新）
+    if (art.like !== undefined) {
+      art.like++;
+    } else if (art.likes !== undefined) {
+      art.likes++;
+    }
+  }
+
+  likeTweet(tweet: Tweet) {
+    // ツイートのいいね機能
+    tweet.like++;
+  }
+  retweetTweet(tweet: Tweet) {
+    // リツイート機能
+    tweet.rt++;
   }
 
   submitPost() {
-    if (!this.newPost.trim() || this.newPost.length > 280) return;
+    if (!this.newPost.trim() || this.isPosting) return;
+
     this.isPosting = true;
-    const apiUrl = environment.apiUrl || 'http://localhost:8000';
-    const tweet: TweetRequest = {
+    const tweetData = {
       content: this.newPost,
-      author: 'あなた',
-      category: 'ユーザー投稿'
+      author: "ユーザー",
+      category: "ユーザー投稿"
     };
-    this.http.post<AsciiArt>(`${apiUrl}/tweet`, tweet)
+
+    this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
       .subscribe({
-        next: (res) => {
-          this.asciiArts.unshift({
-            ...res,
-            timestamp: '今'
-          });
+        next: (response) => {
+          this.tweets.unshift(response); // 新しいツイートを先頭に追加
           this.newPost = '';
-          this.isPosting = false;
+          this.logService.log('ツイートを投稿しました', String(response));
         },
         error: (error) => {
-          // エラー時の処理
+          console.error('ツイートの投稿に失敗しました:', error);
+          this.logService.log('ツイートの投稿に失敗しました', error);
+        },
+        complete: () => {
           this.isPosting = false;
-          alert('投稿に失敗しました');
         }
       });
   }
@@ -337,4 +457,67 @@ export class ItemsComponent implements OnInit {
     const mins = Math.floor(Math.random() * 59) + 1;
     return `${mins}分前`;
   }
-}
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      this.imageFile = input.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.selectedImage = e.target?.result || null;
+      };
+      reader.readAsDataURL(this.imageFile);
+    }
+  }
+
+  removeImage() {
+    this.selectedImage = null;
+    this.imageFile = null;
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    this.isDragOver = true;
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    this.isDragOver = false;
+  }
+
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+    this.isDragOver = false;
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      this.imageFile = event.dataTransfer.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.selectedImage = e.target?.result || null;
+      };
+      reader.readAsDataURL(this.imageFile);
+    }
+  }
+
+  uploadImage() {
+    if (!this.imageFile) return;
+    this.isUploading = true;
+    const apiUrl = environment.apiUrl || 'http://localhost:8000';
+    const formData = new FormData();
+    formData.append('file', this.imageFile);
+    formData.append('author', 'あなた');
+    formData.append('category', '画像変換');
+
+    this.http.post<any>(`${apiUrl}/upload-image`, formData)
+      .subscribe({
+        next: (res) => {
+          this.asciiArtPosted.emit({ ...res, timestamp: '今' });
+          this.removeImage();
+          this.isUploading = false;
+        },
+        error: (error) => {
+          this.isUploading = false;
+          alert('画像のアップロードまたは変換に失敗しました');
+        }
+      });
+  }
+} 
