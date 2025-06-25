@@ -23,9 +23,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # 環境変数の設定
 ENV OTEL_SERVICE_NAME=backend-service
 ENV OTEL_TRACES_EXPORTER=datadog
-ENV OTEL_EXPORTER_DATADOG_ENDPOINT=http://datadog-agent:8126
+ENV OTEL_EXPORTER_DATADOG_ENDPOINT=http://datadog-agent.monitoring.svc.cluster.local:8126
 ENV OTEL_RESOURCE_ATTRIBUTES=service.name=backend-service,service.version=1.0.0,deployment.environment=production
-
 
 # ユーザーの切り替え
 USER appuser
