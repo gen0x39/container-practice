@@ -42,5 +42,15 @@ spec:
         - name: PORT
           value: "9000"
         - name: ENVIRONMENT
-          value: "production"  # 本番環境
+          value: "production"
+        - name: OTEL_SERVICE_NAME
+          value: "backend-service"
+        - name: OTEL_TRACES_EXPORTER
+          value: "otlp"  # datadogからotlpに変更
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://datadog-agent.monitoring.svc.cluster.local:4317"  # OTLPエンドポイント
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: "service.name=backend-service,service.version=1.0.0,deployment.environment=production"
+        - name: OTEL_PYTHON_FASTAPI_EXCLUDED_URLS
+          value: "health"
           

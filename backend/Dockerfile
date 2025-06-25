@@ -21,9 +21,8 @@ COPY --chown=appuser:appuser requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# 環境変数の設定（デフォルト値のみ）
 ENV OTEL_SERVICE_NAME=backend-service
-ENV OTEL_TRACES_EXPORTER=datadog
-ENV OTEL_EXPORTER_DATADOG_ENDPOINT=http://datadog-agent.monitoring.svc.cluster.local:8126
 ENV OTEL_RESOURCE_ATTRIBUTES=service.name=backend-service,service.version=1.0.0,deployment.environment=production
 
 # ユーザーの切り替え
