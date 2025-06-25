@@ -14,7 +14,8 @@ from routes import (
     frontend_info_router,
     load_test_router,
     tweets_router,
-    upload_router
+    upload_router,
+    trace_example_router
 )
 
 # OpenTelemetryの初期化
@@ -48,6 +49,7 @@ app.include_router(frontend_info_router)
 app.include_router(load_test_router)
 app.include_router(tweets_router)
 app.include_router(upload_router)
+app.include_router(trace_example_router)
 
 if __name__ == "__main__":
     import uvicorn
