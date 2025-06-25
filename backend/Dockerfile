@@ -11,16 +11,16 @@ RUN useradd -m -u 1000 appuser
 RUN mkdir -p /app/ascii /app/tweet && \
     chown -R appuser:appuser /app
 
-# アプリケーションコードのコピー
 COPY --chown=appuser:appuser main.py /app/main.py
-COPY --chown=appuser:appuser requirements.txt /app/requirements.txt
 COPY --chown=appuser:appuser data.json /app/data.json
+COPY --chown=appuser:appuser models /app/models
+COPY --chown=appuser:appuser routes /app/routes
+COPY --chown=appuser:appuser utils /app/utils
+COPY --chown=appuser:appuser requirements.txt /app/requirements.txt
 
-# パッケージのインストール
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# 環境変数の設定
 ENV OTEL_SERVICE_NAME=backend-service
 ENV OTEL_TRACES_EXPORTER=datadog
 ENV OTEL_EXPORTER_DATADOG_ENDPOINT=http://datadog-agent.monitoring.svc.cluster.local:8126
@@ -29,6 +29,4 @@ ENV OTEL_RESOURCE_ATTRIBUTES=service.name=backend-service,service.version=1.0.0,
 # ユーザーの切り替え
 USER appuser
 
-# CMDは削除（ベースイメージのデフォルト設定を使用）
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9000"]
-# CMD ["opentelemetry-instrument", "--traces_exporter", "datadog", "--service_name", "my-fastapi-service", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9000"]
