@@ -3,3 +3,8 @@ uvicorn[standard]
 python-multipart
 Pillow
 ascii_magic
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation
+opentelemetry-instrumentation-fastapi
+opentelemetry-exporter-datadog
