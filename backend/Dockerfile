@@ -31,5 +31,5 @@ ENV OTEL_LOGS_EXPORTER=none
 USER appuser
 
 # CMDは削除（ベースイメージのデフォルト設定を使用）
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9000"]
-CMD ["opentelemetry-instrument", "--traces_exporter", "datadog", "--service_name", "my-fastapi-service", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9000"]
+# CMD ["opentelemetry-instrument", "--traces_exporter", "datadog", "--service_name", "my-fastapi-service", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9000"]
