@@ -81,8 +81,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FastAPIInstrumentor.instrument_app(app)
-
+# OpenTelemetry FastAPI Instrumentationの設定
+FastAPIInstrumentor.instrument_app(
+    app,
+    tracer_provider=None,  # デフォルトのトレーサープロバイダーを使用
+    meter_provider=None,   # デフォルトのメータープロバイダーを使用
+    excluded_urls=None,    # 除外URLなし
+    http_capture_headers_server_request=None,  # リクエストヘッダーキャプチャなし
+    http_capture_headers_server_response=None, # レスポンスヘッダーキャプチャなし
+    http_capture_headers_sanitize_fields=None, # ヘッダーサニタイズなし
+    exclude_spans=None     # スパン除外なし
+)
 
 @app.get("/health")
 async def health_check(request: Request):
