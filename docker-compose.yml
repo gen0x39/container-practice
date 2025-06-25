@@ -16,3 +16,7 @@ services:
       - ./backend:/app
     environment:
       - ENVIRONMENT=development
+      - OTEL_SERVICE_NAME=backend-service
+      - OTEL_TRACES_EXPORTER=console
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=backend-service,service.version=1.0.0,deployment.environment=development
+      - OTEL_PYTHON_FASTAPI_EXCLUDED_URLS=health

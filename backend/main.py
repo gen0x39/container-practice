@@ -20,6 +20,30 @@ import random
 # OpenTelemetry FastAPI Instrumentationの追加
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+# OpenTelemetryの初期化を追加
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, BatchSpanProcessor
+
+
+# OpenTelemetryの初期化
+def init_telemetry():
+    """OpenTelemetryの初期化"""
+    # トレーサープロバイダーの設定
+    trace.set_tracer_provider(TracerProvider())
+    
+    # コンソールエクスポーターの設定
+    console_exporter = ConsoleSpanExporter()
+    span_processor = BatchSpanProcessor(console_exporter)
+    trace.get_tracer_provider().add_span_processor(span_processor)
+    
+    # トレーサーの取得
+    return trace.get_tracer(__name__)
+
+# トレーサーの初期化
+tracer = init_telemetry()
+
+
 # ログ設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -82,16 +106,7 @@ app.add_middleware(
 )
 
 # OpenTelemetry FastAPI Instrumentationの設定
-FastAPIInstrumentor.instrument_app(
-    app,
-    tracer_provider=None,  # デフォルトのトレーサープロバイダーを使用
-    meter_provider=None,   # デフォルトのメータープロバイダーを使用
-    excluded_urls=None,    # 除外URLなし
-    http_capture_headers_server_request=None,  # リクエストヘッダーキャプチャなし
-    http_capture_headers_server_response=None, # レスポンスヘッダーキャプチャなし
-    http_capture_headers_sanitize_fields=None, # ヘッダーサニタイズなし
-    exclude_spans=None     # スパン除外なし
-)
+FastAPIInstrumentor.instrument_app(app)
 
 @app.get("/health")
 async def health_check(request: Request):
