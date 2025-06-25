@@ -20,6 +20,13 @@ COPY --chown=appuser:appuser data.json /app/data.json
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# 環境変数の設定
+ENV OTEL_EXPORTER_DATADOG_ENDPOINT=http://datadog-agent:8126
+ENV OTEL_SERVICE_NAME=my-fastapi-service
+ENV OTEL_TRACES_EXPORTER=datadog
+ENV OTEL_METRICS_EXPORTER=none
+ENV OTEL_LOGS_EXPORTER=none
+
 # ユーザーの切り替え
 USER appuser
 

@@ -17,6 +17,8 @@ import ascii_magic
 import io
 import base64
 import random
+# OpenTelemetry FastAPI Instrumentationの追加
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -78,6 +80,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+FastAPIInstrumentor.instrument_app(app)
+
 
 @app.get("/health")
 async def health_check(request: Request):
