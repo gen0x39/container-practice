@@ -28,7 +28,7 @@ async def get_all_tweets(request: Request):
     try:
         # 意図的に10000件のダミーデータを生成（パフォーマンス問題）
         dummy_tweets = []
-        for i in range(900000):
+        for i in range(10000):
             dummy_tweets.append({
                 "tweet": f"ダミーツイート {i} - " + "🚀" * (i % 10 + 1),
                 "like": random.randint(0, 1000),
