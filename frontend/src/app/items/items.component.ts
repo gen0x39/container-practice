@@ -317,13 +317,13 @@ export class ItemsComponent implements OnInit {
   submitPost() {
     if ((!this.newPost.trim() && !this.imageFile) || this.isPosting) return;
     this.isPosting = true;
-
+  
     if (this.imageFile) {
       const formData = new FormData();
       formData.append('file', this.imageFile);
       formData.append('author', 'ユーザー');
       formData.append('category', '画像変換');
-
+  
       this.http.post<any>(`${environment.apiUrl}/upload-image`, formData)
         .subscribe({
           next: (res) => {
@@ -331,18 +331,20 @@ export class ItemsComponent implements OnInit {
               content: this.newPost,
               author: 'ユーザー',
               category: '画像＋テキスト',
-              ascii_content: res.ascii_content // バックエンドのレスポンスに合わせて
+              ascii_content: res.ascii_content
             };
             this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
               .subscribe({
                 next: (tweetRes) => {
-                  this.tweets.unshift(tweetRes);
+                  // 意図的に新しい投稿を表示しない（バグ）
+                  // this.tweets.unshift(tweetRes); // この行をコメントアウト
                   this.newPost = '';
                   this.removeImage();
                   this.isPosting = false;
+                  console.log('投稿が成功しました！'); // 成功メッセージは表示
                 },
                 error: (error) => {
-                  alert('ツイートの投稿に失敗しました');
+                  console.error('ツイートの投稿に失敗しました');
                   this.isPosting = false;
                 }
               });
@@ -362,12 +364,14 @@ export class ItemsComponent implements OnInit {
       this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
         .subscribe({
           next: (response) => {
-            this.tweets.unshift(response);
+            // 意図的に新しい投稿を表示しない（バグ）
+            // this.tweets.unshift(response); // この行をコメントアウト
             this.newPost = '';
             this.isPosting = false;
+            console.log('投稿が成功しました！'); // 成功メッセージは表示
           },
           error: (error) => {
-            alert('ツイートの投稿に失敗しました');
+            console.error('ツイートの投稿に失敗しました');
             this.isPosting = false;
           }
         });
