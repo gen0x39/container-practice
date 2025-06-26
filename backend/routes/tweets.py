@@ -26,6 +26,20 @@ async def get_all_tweets(request: Request):
     )
     
     try:
+        # 意図的に10000件のダミーデータを生成（パフォーマンス問題）
+        dummy_tweets = []
+        for i in range(900000):
+            dummy_tweets.append({
+                "tweet": f"ダミーツイート {i} - " + "🚀" * (i % 10 + 1),
+                "like": random.randint(0, 1000),
+                "rt": random.randint(0, 500),
+                "id": f"dummy_{i}",
+                "title": f"ダミータイトル {i}",
+                "category": "ダミー",
+                "author": f"ダミーユーザー{i % 100}",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "filename": f"dummy_{i}.txt"
+            })
         tweet_dir = Path("tweet")
         if not tweet_dir.exists():
             log_structured_event(
