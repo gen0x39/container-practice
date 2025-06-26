@@ -38,3 +38,5 @@ spec:
           value: "production"
         - name: PORT
           value: "4200"
+        - name: OTLP_TRACE_EXPORTER_URL
+          value: "http://datadog-agent.monitoring.svc.cluster.local:4318/v1/traces"
