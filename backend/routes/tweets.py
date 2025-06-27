@@ -2,10 +2,6 @@ from fastapi import APIRouter, Request, HTTPException
 import json
 import time
 import uuid
-from fastapi import APIRouter, Request, HTTPException
-import json
-import time
-import uuid
 import random
 from datetime import datetime
 from pathlib import Path
@@ -38,10 +34,11 @@ async def get_all_tweets(request: Request):
             main_span.set_attribute("operation.type", "tweet_retrieval")
             main_span.set_attribute("request.id", request_id)
             
-            # ダミーツイート生成処理を子スパンとして作成
-            with tracer.start_as_current_span("generate_dummy_tweets") as dummy_span:
-                dummy_span.set_attribute("dummy_tweets.count", 10000)
-                dummy_span.set_attribute("dummy_tweets.purpose", "performance_testing")
+            # 前処理を子スパンとして作成
+            with tracer.start_as_current_span("pre_process") as pre_span:
+                pre_span.set_attribute("operation.type", "data_preparation")
+                pre_span.set_attribute("items.count", 10000)
+                pre_span.set_attribute("items.purpose", "performance_testing")
             
                 # 意図的に10000件のダミーデータを生成（パフォーマンス問題）
                 dummy_tweets = []
@@ -58,9 +55,9 @@ async def get_all_tweets(request: Request):
                         "filename": f"dummy_{i}.txt"
                     })
                 
-                # ダミーツイート生成スパンに完了情報を追加
-                dummy_span.set_attribute("dummy_tweets.generated", len(dummy_tweets))
-                dummy_span.set_attribute("dummy_tweets.operation", "completed")
+                # 前処理スパンに完了情報を追加
+                pre_span.set_attribute("items.processed", len(dummy_tweets))
+                pre_span.set_attribute("operation.status", "completed")
             
             # ファイル読み込み処理を子スパンとして作成
             with tracer.start_as_current_span("load_tweet_files") as file_span:
