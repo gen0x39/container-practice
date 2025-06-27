@@ -1,10 +1,10 @@
 import { Routes } from '@angular/router';
-import { App } from './app';
+import { HomeComponent } from './home/home.component'; // 追加
 import { ItemsComponent } from './items/items.component';
 import { HealthComponent } from './health/health.component';
 
 export const routes: Routes = [
-  { path: '', component: App },
+  { path: '', component: ItemsComponent }, // ← ここをItemsComponentに
   { path: 'items', component: ItemsComponent },
   { path: 'health', component: HealthComponent }
 ];

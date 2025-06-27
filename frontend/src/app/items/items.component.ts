@@ -133,6 +133,7 @@ interface TweetRequest {
     }
     .header {
       width: 100%;
+      max-width: 900px;
       background: #1da1f2;
       color: white;
       padding: 32px 0 16px 0;
@@ -317,13 +318,13 @@ export class ItemsComponent implements OnInit {
   submitPost() {
     if ((!this.newPost.trim() && !this.imageFile) || this.isPosting) return;
     this.isPosting = true;
-  
+
     if (this.imageFile) {
       const formData = new FormData();
       formData.append('file', this.imageFile);
       formData.append('author', 'ユーザー');
       formData.append('category', '画像変換');
-  
+
       this.http.post<any>(`${environment.apiUrl}/upload-image`, formData)
         .subscribe({
           next: (res) => {
@@ -336,8 +337,7 @@ export class ItemsComponent implements OnInit {
             this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
               .subscribe({
                 next: (tweetRes) => {
-                  // 意図的に新しい投稿を表示しない（バグ）
-                  // this.tweets.unshift(tweetRes); // この行をコメントアウト
+                  this.tweets.unshift(tweetRes);
                   this.newPost = '';
                   this.removeImage();
                   this.isPosting = false;

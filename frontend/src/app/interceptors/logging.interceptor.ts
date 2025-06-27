@@ -11,7 +11,6 @@ export const LoggingInterceptor: HttpInterceptorFn = (
   const startTime = Date.now();
   const requestId = Math.random().toString(36).substring(2, 15);
 
-  // リクエスト開始ログ
   logService.info(
     'http_request_start',
     `HTTP request started: ${request.method} ${request.url}`,
