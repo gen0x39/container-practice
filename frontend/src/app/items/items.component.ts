@@ -364,11 +364,10 @@ export class ItemsComponent implements OnInit {
       this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
         .subscribe({
           next: (response) => {
-            // 意図的に新しい投稿を表示しない（バグ）
-            // this.tweets.unshift(response); // この行をコメントアウト
+            this.tweets.unshift(response);
             this.newPost = '';
             this.isPosting = false;
-            console.log('投稿が成功しました！'); // 成功メッセージは表示
+            console.log('投稿が成功しました！');
           },
           error: (error) => {
             console.error('ツイートの投稿に失敗しました');
