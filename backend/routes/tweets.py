@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from models.tweet import TweetRequest
 from utils.logging import log_structured_event, log_request_response
+from opentelemetry import trace  # 新規追加
 
 router = APIRouter()
 
@@ -26,20 +27,32 @@ async def get_all_tweets(request: Request):
     )
     
     try:
-        # 意図的に10000件のダミーデータを生成（パフォーマンス問題）
-        dummy_tweets = []
-        for i in range(10000):
-            dummy_tweets.append({
-                "tweet": f"ダミーツイート {i} - " + "🚀" * (i % 10 + 1),
-                "like": random.randint(0, 1000),
-                "rt": random.randint(0, 500),
-                "id": f"dummy_{i}",
-                "title": f"ダミータイトル {i}",
-                "category": "ダミー",
-                "author": f"ダミーユーザー{i % 100}",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "filename": f"dummy_{i}.txt"
-            })
+        # OpenTelemetryトレーサーの取得
+        tracer = trace.get_tracer(__name__)
+
+        # ダミーツイート生成処理をスパンで囲む
+        with tracer.start_as_current_span("generate_dummy_tweets") as span:
+            span.set_attribute("dummy_tweets.count", 10000)
+            span.set_attribute("dummy_tweets.purpose", "performance_testing")
+        
+            # 意図的に10000件のダミーデータを生成（パフォーマンス問題）
+            dummy_tweets = []
+            for i in range(10000):
+                dummy_tweets.append({
+                    "tweet": f"ダミーツイート {i} - " + "🚀" * (i % 10 + 1),
+                    "like": random.randint(0, 1000),
+                    "rt": random.randint(0, 500),
+                    "id": f"dummy_{i}",
+                    "title": f"ダミータイトル {i}",
+                    "category": "ダミー",
+                    "author": f"ダミーユーザー{i % 100}",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "filename": f"dummy_{i}.txt"
+                })
+            # スパンに生成完了の情報を追加
+            span.set_attribute("dummy_tweets.generated", len(dummy_tweets))
+            span.set_attribute("dummy_tweets.operation", "completed")
+        
         tweet_dir = Path("tweet")
         if not tweet_dir.exists():
             log_structured_event(
