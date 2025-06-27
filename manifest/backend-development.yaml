@@ -1,3 +1,4 @@
+# バックエンドのリソースを増加（CPU負荷テスト用）
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,9 +7,9 @@ metadata:
   labels:
     app.kubernetes.io/name: backend
   annotations:
-    argocd-image-updater.argoproj.io/image-list: backend=ghcr.io/gen0x39/container-practice/backend
+    argocd-image-updater.argoproj.io/image-list: backend=ghcr.io/gen0x49/container-practice/backend
     argocd-image-updater.argoproj.io/backend.update-strategy: semver
-    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^(latest|v[0-9]+\.[0-9]+\.[0-9]+|[a-f0-9]{7,})$ # SHAタグも許可
+    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^(latest|v[0-9]+\.[0-9]+\.[0-9]+|[a-f0-9]{7,})$
     argocd-image-updater.argoproj.io/backend.force-update: "true"
     argocd-image-updater.argoproj.io/backend.pull-secret: pullsecret:argocd/ghcr-secret
 spec:
@@ -23,17 +24,17 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/gen0x39/container-practice/backend:latest
+        image: ghcr.io/gen0x49/container-practice/backend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 9000
         resources:
           requests:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 500m         # 0.5 CPU core
+            memory: 512Mi     # 512MB RAM
           limits:
-            cpu: 500m
-            memory: 512Mi
+            cpu: 1000m        # 1 CPU core
+            memory: 1Gi       # 1GB RAM
         env:
         - name: MODULE_NAME
           value: "main"

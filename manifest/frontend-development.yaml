@@ -1,3 +1,4 @@
+# フロントエンドのリソースを増加（CPU負荷テスト用）
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: frontend
   annotations:
-    argocd-image-updater.argoproj.io/image-list: frontend=ghcr.io/gen0x39/container-practice/frontend
+    argocd-image-updater.argoproj.io/image-list: frontend=ghcr.io/gen0x49/container-practice/frontend
     argocd-image-updater.argoproj.io/frontend.update-strategy: latest
     argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^(latest|v[0-9]+\.[0-9]+\.[0-9]+)$
     argocd-image-updater.argoproj.io/frontend.force-update: "true"
@@ -22,17 +23,17 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/gen0x39/container-practice/frontend:latest
+        image: ghcr.io/gen0x49/container-practice/frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 4200
         resources:
           requests:
-            cpu: 500m        # 300m → 500m に増加
-            memory: 1Gi      # 512Mi → 1Gi に増加
+            cpu: 1000m        # 1 CPU core
+            memory: 2Gi       # 2GB RAM
           limits:
-            cpu: 1000m       # 500m → 1000m に増加
-            memory: 2Gi      # 1Gi → 2Gi に増加
+            cpu: 2000m        # 2 CPU cores
+            memory: 4Gi       # 4GB RAM
         env:
         - name: NODE_ENV
           value: "production"
