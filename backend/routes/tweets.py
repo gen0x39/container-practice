@@ -2,12 +2,16 @@ from fastapi import APIRouter, Request, HTTPException
 import json
 import time
 import uuid
+from fastapi import APIRouter, Request, HTTPException
+import json
+import time
+import uuid
 import random
 from datetime import datetime
 from pathlib import Path
 from models.tweet import TweetRequest
 from utils.logging import log_structured_event, log_request_response
-from opentelemetry import trace  # 新規追加
+from opentelemetry import trace
 
 router = APIRouter()
 
@@ -27,75 +31,100 @@ async def get_all_tweets(request: Request):
     )
     
     try:
-        # OpenTelemetryトレーサーの取得
         tracer = trace.get_tracer(__name__)
-
-        # ダミーツイート生成処理をスパンで囲む
-        with tracer.start_as_current_span("generate_dummy_tweets") as span:
-            span.set_attribute("dummy_tweets.count", 10000)
-            span.set_attribute("dummy_tweets.purpose", "performance_testing")
         
-            # 意図的に10000件のダミーデータを生成（パフォーマンス問題）
-            dummy_tweets = []
-            for i in range(10000):
-                dummy_tweets.append({
-                    "tweet": f"ダミーツイート {i} - " + "🚀" * (i % 10 + 1),
-                    "like": random.randint(0, 1000),
-                    "rt": random.randint(0, 500),
-                    "id": f"dummy_{i}",
-                    "title": f"ダミータイトル {i}",
-                    "category": "ダミー",
-                    "author": f"ダミーユーザー{i % 100}",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
-                    "filename": f"dummy_{i}.txt"
-                })
-            # スパンに生成完了の情報を追加
-            span.set_attribute("dummy_tweets.generated", len(dummy_tweets))
-            span.set_attribute("dummy_tweets.operation", "completed")
-        
-        tweet_dir = Path("tweet")
-        if not tweet_dir.exists():
-            log_structured_event(
-                "tweets_error",
-                "Tweet directory not found",
-                level="WARNING",
-                request_id=request_id,
-                error_type="DirectoryNotFound"
-            )
-            return []
-        
-        json_files = list(tweet_dir.glob("*.json"))
-        tweets = []
-        
-        for file_path in json_files:
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    tweet_data = json.load(f)
+        # メインのget_all_tweetsスパンを作成
+        with tracer.start_as_current_span("get_all_tweets") as main_span:
+            main_span.set_attribute("operation.type", "tweet_retrieval")
+            main_span.set_attribute("request.id", request_id)
+            
+            # ダミーツイート生成処理を子スパンとして作成
+            with tracer.start_as_current_span("generate_dummy_tweets") as dummy_span:
+                dummy_span.set_attribute("dummy_tweets.count", 10000)
+                dummy_span.set_attribute("dummy_tweets.purpose", "performance_testing")
+            
+                # 意図的に10000件のダミーデータを生成（パフォーマンス問題）
+                dummy_tweets = []
+                for i in range(10000):
+                    dummy_tweets.append({
+                        "tweet": f"ダミーツイート {i} - " + "🚀" * (i % 10 + 1),
+                        "like": random.randint(0, 1000),
+                        "rt": random.randint(0, 500),
+                        "id": f"dummy_{i}",
+                        "title": f"ダミータイトル {i}",
+                        "category": "ダミー",
+                        "author": f"ダミーユーザー{i % 100}",
+                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "filename": f"dummy_{i}.txt"
+                    })
                 
-                tweets.append(tweet_data)
+                # ダミーツイート生成スパンに完了情報を追加
+                dummy_span.set_attribute("dummy_tweets.generated", len(dummy_tweets))
+                dummy_span.set_attribute("dummy_tweets.operation", "completed")
+            
+            # ファイル読み込み処理を子スパンとして作成
+            with tracer.start_as_current_span("load_tweet_files") as file_span:
+                file_span.set_attribute("operation.type", "file_loading")
                 
-                log_structured_event(
-                    "tweet_file_loaded",
-                    f"Tweet JSON file loaded successfully",
-                    level="DEBUG",
-                    request_id=request_id,
-                    filename=file_path.name,
-                    tweet_id=tweet_data.get("id", "unknown")
-                )
+                tweet_dir = Path("tweet")
+                if not tweet_dir.exists():
+                    file_span.set_attribute("error.type", "DirectoryNotFound")
+                    log_structured_event(
+                        "tweets_error",
+                        "Tweet directory not found",
+                        level="WARNING",
+                        request_id=request_id,
+                        error_type="DirectoryNotFound"
+                    )
+                    return []
                 
-            except Exception as e:
-                log_structured_event(
-                    "tweet_file_error",
-                    f"Failed to load tweet file: {str(e)}",
-                    level="ERROR",
-                    request_id=request_id,
-                    filename=file_path.name,
-                    error_type=type(e).__name__,
-                    error_message=str(e)
-                )
-        
-        # タイムスタンプでソート（新しい順）
-        tweets.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+                json_files = list(tweet_dir.glob("*.json"))
+                file_span.set_attribute("files.found", len(json_files))
+                
+                tweets = []
+                
+                for file_path in json_files:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            tweet_data = json.load(f)
+                        
+                        tweets.append(tweet_data)
+                        
+                        log_structured_event(
+                            "tweet_file_loaded",
+                            f"Tweet JSON file loaded successfully",
+                            level="DEBUG",
+                            request_id=request_id,
+                            filename=file_path.name,
+                            tweet_id=tweet_data.get("id", "unknown")
+                        )
+                        
+                    except Exception as e:
+                        log_structured_event(
+                            "tweet_file_error",
+                            f"Failed to load tweet file: {str(e)}",
+                            level="ERROR",
+                            request_id=request_id,
+                            filename=file_path.name,
+                            error_type=type(e).__name__,
+                            error_message=str(e)
+                        )
+                
+                file_span.set_attribute("files.loaded", len(tweets))
+            
+            # ソート処理を子スパンとして作成
+            with tracer.start_as_current_span("sort_tweets") as sort_span:
+                sort_span.set_attribute("operation.type", "data_sorting")
+                sort_span.set_attribute("tweets.to_sort", len(tweets))
+                
+                # タイムスタンプでソート（新しい順）
+                tweets.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+                
+                sort_span.set_attribute("tweets.sorted", len(tweets))
+            
+            # メインスパンに最終結果を追加
+            main_span.set_attribute("tweets.total_returned", len(tweets))
+            main_span.set_attribute("operation.status", "completed")
         
         response_time = (time.time() - start_time) * 1000
         
