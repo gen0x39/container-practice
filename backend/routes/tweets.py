@@ -175,7 +175,7 @@ async def get_all_tweets(request: Request):
             total_files=len(json_files)
         )
         
-    return tweets
+        return tweets
         
     except Exception as e:
         error_response_time = (time.time() - start_time) * 1000
