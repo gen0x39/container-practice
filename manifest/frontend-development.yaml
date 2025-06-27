@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: frontend
   annotations:
-    argocd-image-updater.argoproj.io/image-list: frontend=ghcr.io/gen0x49/container-practice/frontend
+    argocd-image-updater.argoproj.io/image-list: frontend=ghcr.io/gen0x39/container-practice/frontend
     argocd-image-updater.argoproj.io/frontend.update-strategy: latest
     argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^(latest|v[0-9]+\.[0-9]+\.[0-9]+)$
     argocd-image-updater.argoproj.io/frontend.force-update: "true"
@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/gen0x49/container-practice/frontend:latest
+        image: ghcr.io/gen0x39/container-practice/frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 4200
