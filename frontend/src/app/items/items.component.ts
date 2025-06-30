@@ -334,8 +334,7 @@ export class ItemsComponent implements OnInit {
               category: '画像＋テキスト',
               ascii_content: res.ascii_content
             };
-            // this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
-            this.http.post<Tweet>(`${environment.apiUrl}/tweat`, tweetData)
+            this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
               .subscribe({
                 next: (tweetRes) => {
                   this.tweets.unshift(tweetRes);
@@ -362,8 +361,7 @@ export class ItemsComponent implements OnInit {
         category: 'ユーザー投稿',
         ascii_content: ''
       };
-      // this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
-      this.http.post<Tweet>(`${environment.apiUrl}/tweat`, tweetData)
+      this.http.post<Tweet>(`${environment.apiUrl}/tweet`, tweetData)
         .subscribe({
           next: (response) => {
             this.tweets.unshift(response);
