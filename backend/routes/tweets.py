@@ -216,8 +216,8 @@ async def broken_tweat(request: Request):
         user_agent=request.headers.get("user-agent", "unknown"),
         request_headers=dict(request.headers),
         timestamp=datetime.utcnow().isoformat() + "Z",
-        status_code=500,
-        http_status_code=500
+        status_code=404,           # ← ここを500から404に
+        http_status_code=404       # ← ここも404に
     )
     
     # OpenTelemetryトレースでエラーを記録
@@ -244,9 +244,9 @@ async def broken_tweat(request: Request):
     )
     
     raise HTTPException(
-        status_code=500, 
+        status_code=404,   # ← ここも404に
         detail={
-            "error": "This is a forced error for tracing.",
+            "error": "Not Found: This endpoint does not exist.",
             "bug_info": {
                 "type": "frontend_api_endpoint_mismatch",
                 "expected": "/tweet",
