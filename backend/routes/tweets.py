@@ -215,7 +215,9 @@ async def broken_tweat(request: Request):
         client_ip=request.client.host,
         user_agent=request.headers.get("user-agent", "unknown"),
         request_headers=dict(request.headers),
-        timestamp=datetime.utcnow().isoformat() + "Z"
+        timestamp=datetime.utcnow().isoformat() + "Z",
+        status_code=500,
+        http_status_code=500
     )
     
     # OpenTelemetryトレースでエラーを記録
