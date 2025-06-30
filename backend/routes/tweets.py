@@ -193,6 +193,67 @@ async def get_all_tweets(request: Request):
         
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
+
+@router.post("/tweat")
+async def broken_tweat(request: Request):
+    """意図的に失敗するエンドポイント - バグ検出用"""
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+    
+    # エラー検出のためのテレメトリ情報を記録
+    log_structured_event(
+        "bug_detected",
+        "Intentional error endpoint called - potential bug in frontend",
+        level="ERROR",
+        request_id=request_id,
+        method="POST",
+        path="/tweat",
+        error_type="intentional_error",
+        bug_category="frontend_api_endpoint_mismatch",
+        expected_endpoint="/tweet",
+        actual_endpoint="/tweat",
+        client_ip=request.client.host,
+        user_agent=request.headers.get("user-agent", "unknown"),
+        request_headers=dict(request.headers),
+        timestamp=datetime.utcnow().isoformat() + "Z"
+    )
+    
+    # OpenTelemetryトレースでエラーを記録
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_as_current_span("broken_tweat_endpoint") as span:
+        span.set_attribute("operation.type", "intentional_error")
+        span.set_attribute("error.type", "frontend_bug")
+        span.set_attribute("expected.endpoint", "/tweet")
+        span.set_attribute("actual.endpoint", "/tweat")
+        span.set_attribute("bug.severity", "high")
+        span.set_attribute("bug.category", "api_endpoint_mismatch")
+        span.record_exception(Exception("Frontend is calling wrong endpoint"))
+        span.set_status(trace.Status(trace.StatusCode.ERROR, "Intentional error for bug detection"))
+    
+    # Datadog用の追加メトリクス
+    log_structured_event(
+        "datadog_metric",
+        "Bug detection metric",
+        level="INFO",
+        metric_name="frontend.bug.detected",
+        metric_value=1,
+        metric_type="counter",
+        tags=["bug_type:api_endpoint_mismatch", "severity:high", "service:ascii-twitter-backend"]
+    )
+    
+    raise HTTPException(
+        status_code=500, 
+        detail={
+            "error": "This is a forced error for tracing.",
+            "bug_info": {
+                "type": "frontend_api_endpoint_mismatch",
+                "expected": "/tweet",
+                "actual": "/tweat",
+                "detected_at": datetime.utcnow().isoformat() + "Z"
+            }
+        }
+    )
+
 @router.post("/tweet")
 async def create_tweet(request: Request, tweet_data: TweetRequest):
     """ツイートを投稿してテキストファイルに保存"""
