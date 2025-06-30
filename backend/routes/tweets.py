@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form
 import json
 import time
 import uuid
@@ -8,48 +8,8 @@ from pathlib import Path
 from models.tweet import TweetRequest
 from utils.logging import log_structured_event, log_request_response
 from opentelemetry import trace
-import asyncio
-import concurrent.futures
-from functools import partial
-import math
 
 router = APIRouter()
-
-def cpu_intensive_calculation(iterations: int) -> float:
-    """CPU負荷の高い計算処理"""
-    result = 0.0
-    for i in range(iterations):
-        result += math.sqrt(i) * math.sin(i) * math.cos(i)
-        # さらに重い計算を追加
-        if i % 100 == 0:
-            result += sum(math.exp(j/100) for j in range(100))
-    return result
-
-def generate_single_tweet(i: int) -> dict:
-    """CPU負荷の高いツイート生成関数"""
-    # CPU負荷の高い計算を実行
-    cpu_result = cpu_intensive_calculation(1000 + (i % 1000))
-    
-    # 複雑な文字列処理
-    emoji_count = int(cpu_result % 10) + 1
-    emoji_string = "��" * emoji_count + "��" * (emoji_count % 5)
-    
-    # 重い辞書処理
-    tweet_data = {
-        "tweet": f"ダミーツイート {i} - {emoji_string} - CPU計算結果: {cpu_result:.2f}",
-        "like": int(cpu_result % 1000),
-        "rt": int(cpu_result % 500),
-        "id": f"dummy_{i}_{int(cpu_result)}",
-        "title": f"ダミータイトル {i} - 計算済み",
-        "category": "ダミー",
-        "author": f"ダミーユーザー{i % 100}",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "filename": f"dummy_{i}.txt",
-        "cpu_intensive": True,
-        "calculation_result": cpu_result
-    }
-    
-    return tweet_data
 
 @router.get("/tweets")
 async def get_all_tweets(request: Request):
@@ -73,31 +33,6 @@ async def get_all_tweets(request: Request):
         with tracer.start_as_current_span("get_all_tweets") as main_span:
             main_span.set_attribute("operation.type", "tweet_retrieval")
             main_span.set_attribute("request.id", request_id)
-            
-            # 高負荷並列処理によるダミーツイート生成
-            with tracer.start_as_current_span("cpu_intensive_pre_process") as cpu_span:
-                cpu_span.set_attribute("operation.type", "cpu_intensive_parallel_processing")
-                cpu_span.set_attribute("items.count", 10000)
-                cpu_span.set_attribute("parallel.workers", 8)  # 並列度を増加
-                cpu_span.set_attribute("cpu.intensive", True)
-                
-                # ProcessPoolExecutorを使用してCPU負荷を最大化
-                with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
-                    # より大きなバッチサイズで処理
-                    batch_size = 1000
-                    batches = [range(i, min(i + batch_size, 10000)) 
-                              for i in range(0, 10000, batch_size)]
-                    
-                    # バッチごとに並列処理
-                    all_tweets = []
-                    for batch in batches:
-                        batch_tweets = list(executor.map(generate_single_tweet, batch))
-                        all_tweets.extend(batch_tweets)
-                
-                cpu_span.set_attribute("items.processed", len(all_tweets))
-                cpu_span.set_attribute("cpu.execution_time_ms", 
-                                     (time.time() - start_time) * 1000)
-                cpu_span.set_attribute("operation.status", "completed")
             
             # ファイル読み込み処理を子スパンとして作成
             with tracer.start_as_current_span("load_tweet_files") as file_span:
@@ -194,8 +129,8 @@ async def get_all_tweets(request: Request):
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
-@router.post("/tweat")
-async def broken_tweat(request: Request):
+@router.post("/tweet")
+async def broken_tweet(request: Request):
     """意図的に失敗するエンドポイント - バグ検出用"""
     start_time = time.time()
     request_id = str(uuid.uuid4())
@@ -207,11 +142,11 @@ async def broken_tweat(request: Request):
         level="ERROR",
         request_id=request_id,
         method="POST",
-        path="/tweat",
+        path="/tweet",
         error_type="intentional_error",
         bug_category="frontend_api_endpoint_mismatch",
         expected_endpoint="/tweet",
-        actual_endpoint="/tweat",
+        actual_endpoint="/tweet",
         client_ip=request.client.host,
         user_agent=request.headers.get("user-agent", "unknown"),
         request_headers=dict(request.headers),
@@ -222,11 +157,11 @@ async def broken_tweat(request: Request):
     
     # OpenTelemetryトレースでエラーを記録
     tracer = trace.get_tracer(__name__)
-    with tracer.start_as_current_span("broken_tweat_endpoint") as span:
+    with tracer.start_as_current_span("broken_tweet_endpoint") as span:
         span.set_attribute("operation.type", "intentional_error")
         span.set_attribute("error.type", "frontend_bug")
         span.set_attribute("expected.endpoint", "/tweet")
-        span.set_attribute("actual.endpoint", "/tweat")
+        span.set_attribute("actual.endpoint", "/tweet")
         span.set_attribute("bug.severity", "high")
         span.set_attribute("bug.category", "api_endpoint_mismatch")
         span.record_exception(Exception("Frontend is calling wrong endpoint"))
@@ -250,7 +185,7 @@ async def broken_tweat(request: Request):
             "bug_info": {
                 "type": "frontend_api_endpoint_mismatch",
                 "expected": "/tweet",
-                "actual": "/tweat",
+                "actual": "/tweet",
                 "detected_at": datetime.utcnow().isoformat() + "Z"
             }
         }
