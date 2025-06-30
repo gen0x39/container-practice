@@ -59,7 +59,7 @@ interface TweetRequest {
           <div class="post-input-container">
             <textarea 
               class="post-textarea" 
-              placeholder="ASCIIアートでつぶやいてみよう..."
+              placeholder="つぶやいてみよう..."
               [(ngModel)]="newPost"
               maxlength="280"
             ></textarea>
