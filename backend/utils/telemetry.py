@@ -9,7 +9,7 @@ def init_telemetry():
     """OpenTelemetryの初期化"""
     # リソース属性の設定（Semantic Conventionsを使用）
     resource = Resource.create({
-        ResourceAttributes.SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "backend-service"),
+        ResourceAttributes.SERVICE_NAME: os.getenv("OTEL_SERVICE_NAME", "ascii-twitter-backend"),
         ResourceAttributes.SERVICE_VERSION: "1.0.0",
         ResourceAttributes.DEPLOYMENT_ENVIRONMENT: os.getenv("ENVIRONMENT", "development")
     })
