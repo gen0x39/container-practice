@@ -321,8 +321,8 @@ async def create_tweet(request: Request, tweet_data: TweetRequest):
         # レスポンス用のツイートオブジェクトを作成
         tweet_response = {
             "tweet": tweet_body,  # テキスト＋アスキーアート
-            "like": random.randint(0, 2000),
-            "rt": random.randint(0, 500),
+            "like": random.randint(5000, 100000),
+            "rt": random.randint(500, 50000),
             "id": tweet_id,
             "title": "新規ツイート",
             "category": tweet_data.category,

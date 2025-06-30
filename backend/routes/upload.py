@@ -116,8 +116,8 @@ async def upload_image_and_convert(
         # レスポンス用のツイートオブジェクトを作成
         tweet_response = {
             "tweet": ascii_content,  # ←ここにアスキーアート本体
-            "like": random.randint(0, 2000),
-            "rt": random.randint(0, 500),
+            "like": random.randint(5000, 100000),
+            "rt": random.randint(500, 50000),
             "id": tweet_id,
             "title": f"画像変換: {file.filename}",
             "category": category,

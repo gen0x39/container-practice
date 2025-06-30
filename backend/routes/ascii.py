@@ -46,8 +46,8 @@ async def get_all_ascii_art(request: Request):
                 title = file_path.stem.replace('_', ' ').title()
                 
                 # ランダムないいね数とリツイート数を生成（実際のアプリではデータベースから取得）
-                likes = random.randint(0, 2000)
-                retweets = random.randint(0, 500)
+                likes = random.randint(5000, 100000)
+                retweets = random.randint(500, 50000)
                 
                 ascii_arts.append({
                     "tweet": content,

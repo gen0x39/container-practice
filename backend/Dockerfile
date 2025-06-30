@@ -16,6 +16,8 @@ COPY --chown=appuser:appuser data.json /app/data.json
 COPY --chown=appuser:appuser models /app/models
 COPY --chown=appuser:appuser routes /app/routes
 COPY --chown=appuser:appuser utils /app/utils
+COPY --chown=appuser:appuser ascii /app/ascii
+COPY --chown=appuser:appuser tweet /app/tweet
 COPY --chown=appuser:appuser requirements.txt /app/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade pip && \
